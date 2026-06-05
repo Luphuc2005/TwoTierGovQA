@@ -1,0 +1,54 @@
+# =============================================================
+# .gitignore — AI-Powered Legal Chatbot Web App
+# =============================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+*.egg-info/
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Environment (NEVER commit .env!)
+.env
+.env.local
+.env.*.local
+
+# Database files (dev SQLite)
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploaded PDFs
+uploads/*.pdf
+
+# Local vector data symlinks/copies (use root vector_data instead)
+vector_data/
+
+# Node / Frontend
+node_modules/
+dist/
+.npm
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+logs/
+
+# Tests / cache
+.pytest_cache/
+*.tmp

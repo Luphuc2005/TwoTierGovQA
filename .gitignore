@@ -1,0 +1,153 @@
+# =============================================================
+# .gitignore — Legal Chatbot RAG (Mono-repo Root)
+# =============================================================
+
+# ── Python ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# ── Virtual Environments ─────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.conda/
+rag_env*/
+ChatBot_env/
+
+# ── Environment Variables (NEVER commit!) ───────────────────
+.env
+.env.local
+.env.production
+.env.*.local
+# Keep .env.example — it is safe to commit
+
+# ── IDE / Editor ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+*.code-workspace
+.history/
+
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# ── Node / Frontend ──────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn/cache
+.pnp*
+
+# ── Build Artifacts ──────────────────────────────────────────
+dist/
+.next/
+out/
+
+# ── ===================================================== ────
+# ── LARGE FILES — Vector Data & Models (DO NOT COMMIT) ──────
+# ── ===================================================== ────
+
+# FAISS index (can be 100MB–1GB+)
+*.faiss
+*.index
+
+# BM25 pickle index
+*.pkl
+*.pickle
+
+# NumPy embeddings
+*.npy
+*.npz
+
+# PyTorch model weights
+*.pt
+*.pth
+*.bin
+*.ckpt
+*.h5
+*.safetensors
+
+# HuggingFace model cache
+huggingface_cache/
+
+# ── Vector store directories (rebuild from PDFs) ─────────────
+vector_data/production/
+vector_data/staging/
+vector_data/backups/
+
+# Allow placeholder .gitkeep files inside
+!vector_data/**/.gitkeep
+
+# ── Uploaded / Source PDFs ───────────────────────────────────
+data/uploads/*.pdf
+Data/**/*.pdf
+ChatBot/**/uploads/*.pdf
+
+# ── Staging / Intermediate Processing Artifacts ──────────────
+vector_data/staging/ocr/
+vector_data/staging/full_text/
+vector_data/staging/parsed/
+vector_data/staging/chunks/
+vector_data/staging/embeddings/
+
+# ── OCR / parse / chunk cache (generated, not source) ────────
+*_protonx_ocr.json
+*_full.txt
+*_parsed.json
+*_final.json
+*_chunks.json
+*_embeddings.npy
+*_report.json
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+*.err
+logs/
+ChatBot/generation/outputs/logs/
+
+# ── Databases (SQLite dev) ───────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Jupyter ──────────────────────────────────────────────────
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# ── Test / Temp ──────────────────────────────────────────────
+*.tmp
+*.cache
+.pytest_cache/
+tmp/
+temp/
+test_output*/
+
+# ── Debug images (OCR debug outputs) ─────────────────────────
+debug_page*.jpg
+debug_page*.png
+
+# ── Misc output dirs from experiments ───────────────────────
+ChatBot/generation/outputs/eval/
+ChatBot/generation/outputs/generation/
+ChatBot/generation/outputs/tmp/
+ChatBot/xldl/output_*/
+ChatBot/xldl/output_test/
+ChatBot/xldl/output_refined/

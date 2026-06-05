@@ -1,0 +1,275 @@
+BAO CAO CHINH SUA TOI UU TOC DO HYBRID RAG
+==========================================
+
+Thoi diem ghi chu: 2026-06-01
+
+Muc tieu ban yeu cau
+--------------------
+Toi uu toc do retrieval cho he thong Hybrid RAG hien tai nhung KHONG thay doi
+cac tham so so luong ung vien nhu BM25_K, DENSE_K, RRF_TOP_N, RERANK_TOP_N.
+
+Y tuong chinh:
+- Tai model/index mot lan khi server khoi dong.
+- Chay song song nhanh BM25 va Dense/FAISS.
+- Cross-Encoder rerank theo batch.
+- Cache retrieval theo cau hoi da normalize.
+- Chi rerank bang Cross-Encoder khi can.
+- Ghi log thoi gian cho tung buoc retrieval.
+
+
+File da chinh sua
+-----------------
+1. ChatBot/generation/run_generation.py
+   - Day la file chua class LegalRetriever, luong Hybrid RAG thuc te ma backend
+     dang dung thong qua GenerationPipeline.
+
+2. ChatBot/generation/config.py
+   - Them cac bien cau hinh runtime de chinh batch size, cache size va threshold
+     bo qua Cross-Encoder khi ket qua dau tien da rat chac.
+
+3. AI-Powered-Q-A-Assistant-for-Vietnam-s-Two-Tier-Local-Government-System/backend/app/rag_service.py
+   - Chinh logic chon device de GPU 4GB van duoc dung cho retriever.
+   - Them fast guard cho cau hoi ngoai pham vi ro rang, vi cac cau nhu
+     "huu tri la con gi" truoc do van di qua retrieval + API nen rat cham.
+
+
+Trang thai truoc khi sua
+------------------------
+1. Model va index:
+   - Backend da co singleton o app/rag_service.py.
+   - LegalRetriever da load FAISS index, metadata, BM25, bi-encoder va
+     cross-encoder trong __init__.
+   - Nhin chung duong server khong thay viec load lai model/index trong moi
+     cau hoi.
+
+   - Tuy nhien backend truoc do chi cho retriever dung CUDA khi GPU co VRAM
+     >= 6GB. Neu GPU 4GB thi bi ep ve CPU.
+
+2. BM25 va FAISS:
+   - Trong retrieve_and_rerank(), BM25 chay truoc.
+   - Sau do moi encode query bang bi-encoder va search FAISS.
+   - Hai nhanh nay doc lap nhung van chay tuan tu, nen thoi gian tong gan bang
+     BM25 + FAISS.
+
+3. Cross-Encoder:
+   - Da co batch predict:
+       self.ce_model.predict(pairs, batch_size=32)
+   - Tuy nhien batch_size bi hard-code la 32 trong code, chua dua ra config.
+
+4. Cache:
+   - Chua co cache retrieval theo query.
+   - Neu nguoi dung hoi lai cung mot cau, he thong van tokenize, BM25, encode,
+     FAISS, RRF va Cross-Encoder lai tu dau.
+
+5. Rerank co dieu kien:
+   - Truoc do moi lan co candidates va co ce_model thi deu chay Cross-Encoder.
+   - Chua co logic bo qua Cross-Encoder khi top-1 cua RRF/Dense da rat chac.
+
+6. Logging thoi gian:
+   - Pipeline chi log tong retrieve_rerank vao latency_retrieve_ms.
+   - Chua tach rieng tokenize, BM25, FAISS, RRF, Cross-Encoder.
+
+7. Luu y quan trong:
+   - Truoc do khi device la CPU, code co tu dong ha top_k_retrieve tu 100 xuong
+     80 de tranh timeout. Viec nay co the lam thay doi so luong ung vien thuc te
+     neu request dung default 100 tren CPU.
+
+8. Cau hoi ngoai pham vi:
+   - Truoc do cac cau nhu "1+1 = may", "huu tri la con gi" van chay retrieval,
+     context building va goi API.
+   - Vi retrieval tren CPU co the mat 60-90 giay, cac cau ngoai pham vi cung bi
+     cham du khong can RAG.
+
+
+Trang thai sau khi sua
+----------------------
+1. Tai tai nguyen mot lan:
+   - Van giu co che load trong LegalRetriever.__init__.
+   - Cac tai nguyen nang gom:
+       + Bi-Encoder BGE-M3
+       + Cross-Encoder reranker
+       + FAISS index
+       + BM25 index
+       + metadata/corpus
+     van duoc khoi tao khi retriever duoc tao, khong dua vao moi request.
+   - Backend app/rag_service.py van dung singleton _pipeline, nen server chi
+     khoi tao pipeline mot lan luc startup.
+
+   - Dong thoi da bo hanh vi cu tu dong ha top_k_retrieve tu 100 xuong 80 tren
+     CPU. Sau khi sua, BM25_K va DENSE_K giu dung theo top_k_retrieve ma pipeline
+     yeu cau.
+
+   - Backend da doi nguong mac dinh cho retriever CUDA tu 6GB xuong 3.5GB:
+       RAG_RETRIEVER_MIN_VRAM_GB = 3.5
+     Nen GPU 4GB se duoc dung cho Bi-Encoder va Cross-Encoder retrieval.
+     Ly do dung 3.5 thay vi 4.0: CUDA thuong bao GPU 4GB laptop thap hon mot
+     chut so voi 4.0GiB, neu dat dung 4.0 co the van bi day ve CPU.
+
+   - Co the ep device bang environment variable:
+       RAG_RETRIEVER_DEVICE=auto
+       RAG_RETRIEVER_DEVICE=cuda
+       RAG_RETRIEVER_DEVICE=cpu
+
+   - Neu GPU chi co duoi 6GB va retriever dang dung CUDA, backend se khong load
+     local Qwen fallback tren GPU nua de tranh het VRAM. Pipeline van dung API
+     backend chinh nhu Gemini/OpenAI/OpenRouter neu da cau hinh.
+   - Khi khong co local fallback, GenerationPipeline se dung API client lam
+     client noi bo va tat local_first de tranh loi startup do local_client=None.
+
+2. Chay song song BM25 va FAISS:
+   - Them ThreadPoolExecutor(max_workers=2).
+   - BM25 search chay trong _bm25_search().
+   - Dense/FAISS search chay trong _dense_search().
+   - retrieve_and_rerank() doi ca hai future xong roi moi hop nhat bang RRF.
+
+3. Cross-Encoder batch prediction linh hoat:
+   - Van gom tat ca cap [query, passage] thanh list pairs.
+   - Goi:
+       self.ce_model.predict(pairs, batch_size=self.ce_batch_size)
+   - self.ce_batch_size lay tu config/env, khong con hard-code trong logic.
+
+4. Cache retrieval theo normalized query:
+   - Them _normalize_query() de dua query ve lowercase va gom khoang trang.
+   - Them LRU cache bang OrderedDict co khoa la normalized query.
+   - Cache luu:
+       + query_embedding
+       + bm25_ids
+       + dense_ids
+       + rrf_ids
+       + chunks sau rerank hoac proxy rerank
+       + trang thai rerank_skipped
+   - Neu hoi lai cung cau hoi sau normalize, retrieve_and_rerank() tra ket qua
+     tu cache, khong chay lai BM25/FAISS/CE.
+
+5. Rerank co dieu kien:
+   - Them _should_skip_rerank().
+   - Neu top-1 Dense trung top-1 RRF, dense score cao, dense margin ro, RRF score
+     va RRF margin dat nguong thi co the bo qua Cross-Encoder.
+   - Khi bo qua CE, he thong gan proxy score bang _assign_proxy_rerank_scores()
+     de cac module gating phia sau van co score_rerank dang so sanh duoc.
+   - Nguong mac dinh dat bao thu de uu tien giu chat luong.
+
+6. Logging thoi gian chi tiet:
+   - Them log dang:
+       [RetrieverTiming] cache_hit=False rerank_skipped=False
+       tokenize=...ms bm25=...ms/... faiss=...ms/... rrf=...ms/...
+       ce=...ms total=...ms
+   - metadata cua GenerationPipeline co them:
+       + metadata["timestamps"]["retrieval_steps"]
+       + metadata["retrieval_cache_hit"]
+       + metadata["rerank_skipped"]
+   - log_entry.latency_rerank_ms bay gio lay tu thoi gian Cross-Encoder rieng.
+
+7. Cac bien config moi trong ChatBot/generation/config.py:
+   - RETRIEVAL_CE_BATCH_SIZE = 32
+   - RETRIEVAL_CACHE_MAX_SIZE = 128
+   - ENABLE_CONDITIONAL_RERANK = True
+   - RERANK_SKIP_MIN_DENSE_SCORE = 0.70
+   - RERANK_SKIP_MIN_DENSE_MARGIN = 0.10
+   - RERANK_SKIP_MIN_RRF_SCORE = 0.0320
+   - RERANK_SKIP_MIN_RRF_MARGIN = 0.0004
+   - RERANK_SKIP_PROXY_SCORE = 8.0
+
+   Cac bien nay cung co the override bang environment variables:
+   - RAG_CE_BATCH_SIZE
+   - RAG_RETRIEVAL_CACHE_MAX_SIZE
+   - RAG_ENABLE_CONDITIONAL_RERANK
+   - RAG_RERANK_SKIP_MIN_DENSE_SCORE
+   - RAG_RERANK_SKIP_MIN_DENSE_MARGIN
+   - RAG_RERANK_SKIP_MIN_RRF_SCORE
+   - RAG_RERANK_SKIP_MIN_RRF_MARGIN
+   - RAG_RERANK_SKIP_PROXY_SCORE
+
+8. Fast guard ngoai pham vi:
+   - Them _is_obvious_out_of_scope() trong rag_service.py.
+   - Neu cau hoi ro rang khong lien quan phap ly, vi du:
+       + "huu tri la con gi"
+       + "1+1 = may vay"
+     backend se tra loi mau ngoai pham vi ngay voi Tier: NONE.
+   - Luong nay khong chay retrieval, khong goi Gemini/API.
+   - Cac cau co keyword phap ly/hien hanh nhu "chu tich xa co quyen gi",
+     "khai sinh o dau", "sap nhap tinh" van di qua RAG nhu binh thuong.
+
+
+Diem giu nguyen de khong giam chat luong
+----------------------------------------
+- Khong thay doi logic RRF merge.
+- Khong thay doi model path.
+- Khong thay doi FAISS index, BM25 index, metadata/corpus.
+- Khong predict tung pair rieng le bang Cross-Encoder.
+- Khong thay doi top_k_rerank dau ra cua pipeline.
+- Khong tu dong ha BM25_K/DENSE_K tren CPU nua; top_k_retrieve duoc giu dung
+  theo tham so dau vao.
+- Cac nguong skip Cross-Encoder duoc dat kha chat, chi skip khi first-stage
+  retrieval rat tu tin.
+
+
+Can chu y
+---------
+Trong run_generation.py van giu max_ce_candidates rieng cho CPU la 25 va CUDA la
+150 vi day la hanh vi da co truoc do. Lan sua nay khong tang/giam con so nay.
+Phan da sua la BM25_K/DENSE_K khong con bi ha 100 -> 80 tren CPU.
+
+
+Kiem tra da chay
+----------------
+1. Kiem tra cu phap:
+   python -m py_compile ChatBot\generation\run_generation.py ChatBot\generation\config.py
+   Ket qua: OK.
+
+2. Smoke test import:
+   Import generation.run_generation va doc cac bien runtime.
+   Ket qua: OK, CE_BATCH = 32, CACHE = 128.
+
+3. Smoke test bang stub:
+   - Lan dau goi retrieve_and_rerank(): Cross-Encoder predict chay 1 lan theo
+     batch.
+   - Lan sau goi query tuong duong sau normalize: cache_hit=True, khong chay
+     lai Cross-Encoder.
+   Ket qua: OK.
+
+4. Smoke test fast guard:
+   - _is_obvious_out_of_scope("huu tri la con gi") -> True.
+   - _is_obvious_out_of_scope("chu tich xa co quyen gi") -> False.
+   Ket qua: OK.
+
+5. Loi startup da sua:
+   - Sau khi them bien RAG_RETRIEVER_DEVICE, ham init_rag_pipeline gap loi
+     UnboundLocalError: local variable 'os' referenced before assignment.
+   - Nguyen nhan: trong ham co import os cuc bo o nhanh doc API key, lam Python
+     coi os la bien local.
+   - Da bo import os cuc bo vi file rag_service.py da import os o dau file.
+
+
+Chan doan neu van thay cham sau khi sua
+---------------------------------------
+Neu UI van hien 60-90 giay va log pipeline van co:
+   top_k_retrieve = 80
+   latency_rerank_ms = 0.0
+thi backend dang chay instance cu trong RAM, chua restart sau khi sua code.
+
+Vi FastAPI/uvicorn import module Python luc startup, sua file .py khong tu dong
+ap dung neu server khong chay che do reload. Can restart backend de nhan:
+- GPU 4GB cho retriever.
+- BM25/FAISS song song.
+- Cache retrieval.
+- Timing log chi tiet.
+- Fast guard ngoai pham vi.
+
+
+Ket qua mong doi sau khi restart server
+---------------------------------------
+- Cau hoi dau tien:
+  + BM25 va FAISS chay song song.
+  + Cross-Encoder chay batch, hoac duoc skip neu top-1 qua chac.
+  + Log co timing tung buoc.
+  + Neu may co CUDA 4GB, log startup se hien "Loading retriever on CUDA".
+
+- Cau hoi lap lai:
+  + Retrieval tra tu cache.
+  + Thoi gian retrieval giam manh.
+  + Log hien cache_hit=True.
+
+- Chat luong:
+  + Ve mac dinh van giu pipeline Hybrid RAG + RRF + Cross-Encoder.
+  + Chi bo qua CE o truong hop co score/margin dat nguong bao thu.

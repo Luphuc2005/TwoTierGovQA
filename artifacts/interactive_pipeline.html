@@ -1,0 +1,1774 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGU RAG Pipeline - Trình Trực Quan Hóa Hệ Thống</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #080c14;
+            --card-bg: rgba(15, 23, 42, 0.75);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #0284c7;
+            --primary-glow: rgba(2, 132, 199, 0.35);
+            --secondary: #f97316;
+            --secondary-glow: rgba(249, 115, 22, 0.35);
+            --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.35);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --font-display: 'Outfit', sans-serif;
+            --font-sans: 'Outfit', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        .light-theme {
+            --bg-color: #f1f5f9;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --border-color: rgba(0, 0, 0, 0.08);
+            --primary: #0284c7;
+            --primary-glow: rgba(2, 132, 199, 0.15);
+            --secondary: #ea580c;
+            --secondary-glow: rgba(234, 88, 12, 0.15);
+            --success: #059669;
+            --success-glow: rgba(5, 150, 105, 0.15);
+            --text-main: #0f172a;
+            --text-muted: #475569;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(2, 132, 199, 0.18) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(249, 115, 22, 0.12) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        header {
+            padding: 1.25rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(8, 12, 20, 0.4);
+        }
+
+        .light-theme header {
+            background: rgba(241, 245, 249, 0.4);
+        }
+
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .sgu-logo {
+            width: 48px;
+            height: 48px;
+            background: #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: #0284c7;
+            font-family: 'Space Grotesk', sans-serif;
+            border: 2.5px solid #0284c7;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+            font-size: 1.1rem;
+        }
+
+        .title-container h1 {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+
+        .title-container p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .controls-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .theme-toggle-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.6rem 1.2rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .theme-toggle-btn:hover {
+            transform: translateY(-1px);
+            border-color: var(--primary);
+        }
+
+        /* Tabs and Navigation Switcher */
+        .tab-switcher {
+            display: flex;
+            background: rgba(15, 23, 42, 0.4);
+            padding: 0.35rem;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+        }
+
+        .light-theme .tab-switcher {
+            background: rgba(226, 232, 240, 0.8);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.5rem 1.25rem;
+            font-family: var(--font-sans);
+            font-weight: 600;
+            font-size: 0.85rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tab-btn.active-tab {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 4px 10px var(--primary-glow);
+        }
+
+        /* Workspace Grid */
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1.85fr 1.15fr;
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1650px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        @media (max-width: 1250px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Panels styling */
+        .flow-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .glass-panel {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            opacity: 0.85;
+        }
+
+        .panel-header {
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .panel-badge {
+            background: rgba(2, 132, 199, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(2, 132, 199, 0.2);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Flow Diagrams Containers */
+        .pipeline-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2.2rem;
+            position: relative;
+            width: 100%;
+        }
+
+        .flow-view {
+            display: none;
+            width: 100%;
+        }
+
+        .flow-view.active-view {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .flow-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1.5rem;
+            position: relative;
+            width: 100%;
+        }
+
+        /* Boundary Groups */
+        .boundary-box {
+            border: 2px dashed rgba(249, 115, 22, 0.3);
+            border-radius: 20px;
+            padding: 1.5rem;
+            background: rgba(249, 115, 22, 0.015);
+            position: relative;
+            width: 100%;
+        }
+
+        .boundary-label {
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: var(--bg-color);
+            padding: 0 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .boundary-box.primary-boundary {
+            border-color: rgba(2, 132, 199, 0.25);
+            background: rgba(2, 132, 199, 0.01);
+        }
+
+        .boundary-box.primary-boundary .boundary-label {
+            color: var(--primary);
+        }
+
+        /* Node Box Styling */
+        .node-card {
+            background: rgba(20, 29, 47, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.2rem;
+            width: 170px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.25);
+            z-index: 10;
+        }
+
+        .light-theme .node-card {
+            background: rgba(241, 245, 249, 0.95);
+        }
+
+        .node-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow);
+            background: rgba(20, 29, 47, 0.85);
+        }
+
+        .node-card.active-node {
+            border-color: var(--success);
+            box-shadow: 0 0 25px var(--success-glow);
+            background: rgba(16, 185, 129, 0.05);
+            animation: pulse-border 2.5s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { border-color: var(--success); }
+            50% { border-color: #34d399; }
+            100% { border-color: var(--success); }
+        }
+
+        .node-card.ocr-node {
+            border-color: rgba(249, 115, 22, 0.35);
+        }
+
+        .node-card.ocr-node:hover {
+            border-color: var(--secondary);
+            box-shadow: 0 0 20px var(--secondary-glow);
+        }
+
+        .node-icon {
+            font-size: 1.7rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .node-title {
+            font-weight: 700;
+            font-size: 0.88rem;
+            margin-bottom: 0.25rem;
+            font-family: var(--font-display);
+        }
+
+        .node-desc {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            line-height: 1.35;
+        }
+
+        /* Connecting Lines & Animated Packets */
+        .arrow-connector {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 2px;
+            position: relative;
+            min-width: 40px;
+        }
+
+        .light-theme .arrow-connector {
+            background: rgba(0, 0, 0, 0.06);
+        }
+
+        .arrow-connector::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: -4px;
+            width: 0;
+            height: 0;
+            border-left: 8px solid rgba(255, 255, 255, 0.12);
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+        }
+
+        .light-theme .arrow-connector::after {
+            border-left-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            position: absolute;
+            top: -2px;
+            left: 0;
+            box-shadow: 0 0 10px var(--primary);
+            animation: flow 2.2s infinite linear;
+        }
+
+        .ocr-dot {
+            background-color: var(--secondary);
+            box-shadow: 0 0 10px var(--secondary);
+        }
+
+        .green-dot {
+            background-color: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        .pink-dot {
+            background-color: #db2777;
+            box-shadow: 0 0 10px #db2777;
+        }
+
+        @keyframes flow {
+            0% { left: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { left: 100%; opacity: 0; }
+        }
+
+        /* Parallel paths custom lines */
+        .fork-container {
+            display: flex;
+            width: 100%;
+            justify-content: space-between;
+            align-items: stretch;
+            position: relative;
+            margin: 1rem 0;
+        }
+
+        .fork-path {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            align-items: center;
+            width: 45%;
+            border: 1px dashed rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 1.2rem;
+            background: rgba(255, 255, 255, 0.005);
+            position: relative;
+        }
+
+        .light-theme .fork-path {
+            border-color: rgba(0, 0, 0, 0.06);
+            background: rgba(0, 0, 0, 0.005);
+        }
+
+        .fork-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+
+        .sparse-label { color: var(--secondary); }
+        .dense-label { color: var(--primary); }
+
+        /* Right Column: Interaction Hub */
+        .info-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .step-details-card {
+            min-height: 290px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .detail-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 220px;
+            text-align: center;
+            color: var(--text-muted);
+            border: 2px dashed rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 2rem;
+        }
+
+        .light-theme .detail-placeholder {
+            border-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .detail-placeholder span {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Detail display */
+        .detail-content {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .detail-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .detail-badge {
+            background: rgba(2, 132, 199, 0.1);
+            color: var(--primary);
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .detail-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 1.3rem;
+            letter-spacing: -0.01em;
+        }
+
+        .detail-desc {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            line-height: 1.55;
+            margin-bottom: 1.25rem;
+        }
+
+        .detail-meta-table {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.82rem;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .light-theme .detail-meta-table {
+            background: rgba(0, 0, 0, 0.02);
+            border-color: rgba(0, 0, 0, 0.03);
+        }
+
+        .detail-meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .detail-meta-row strong {
+            color: var(--text-main);
+        }
+
+        .detail-meta-row span {
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .math-box {
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.04);
+            border: 1px solid rgba(245, 158, 11, 0.15);
+            padding: 0.5rem;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+            display: inline-block;
+            white-space: pre-wrap;
+            word-break: break-all;
+            width: 100%;
+        }
+
+        /* Terminal Window */
+        .terminal-panel {
+            background: #040710;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 1.5rem;
+            font-family: var(--font-mono);
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.85);
+            position: relative;
+        }
+
+        .light-theme .terminal-panel {
+            background: #0f172a;
+            border-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.5rem;
+            font-size: 0.72rem;
+            color: #4b5563;
+        }
+
+        .terminal-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .terminal-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .dot-red { background: #ef4444; }
+        .dot-yellow { background: #f59e0b; }
+        .dot-green { background: #10b981; }
+
+        .terminal-console {
+            height: 200px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            color: #e5e7eb;
+            line-height: 1.55;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding-right: 0.5rem;
+        }
+
+        .terminal-console::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .terminal-console::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .log-line {
+            word-break: break-all;
+        }
+
+        .log-info { color: #38bdf8; }
+        .log-success { color: #34d399; }
+        .log-warning { color: #fbbf24; }
+        .log-error { color: #f87171; }
+        .log-attn { color: #f472b6; }
+
+        /* Simulator controls */
+        .simulator-control-panel {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .sim-btn {
+            flex: 1;
+            background: var(--primary);
+            color: #ffffff;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 10px var(--primary-glow);
+            transition: all 0.2s ease;
+        }
+
+        .sim-btn:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.1);
+        }
+
+        .sim-btn.secondary-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            box-shadow: none;
+        }
+
+        .sim-btn.secondary-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .light-theme .sim-btn.secondary-btn {
+            background: rgba(0, 0, 0, 0.02);
+            color: #0f172a;
+        }
+
+        .light-theme .sim-btn.secondary-btn:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        /* Status summary bar */
+        .status-summary {
+            display: flex;
+            justify-content: space-between;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1rem 1.5rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 1rem;
+        }
+
+        .status-summary-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .status-summary-item strong {
+            color: var(--text-main);
+            font-size: 0.95rem;
+            font-family: var(--font-mono);
+        }
+
+        footer {
+            padding: 2rem;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand-container">
+            <div class="sgu-logo">SGU</div>
+            <div class="title-container">
+                <h1>RAG Pipeline Ingestion & Retrieval</h1>
+                <p>Mô hình Nghiên Cứu và Triển Khai Thực Nghiệm - Đại Học Sài Gòn (SGU)</p>
+            </div>
+        </div>
+        
+        <div class="controls-header">
+            <div class="tab-switcher">
+                <button class="tab-btn active-tab" onclick="switchTab('phase1')">Pha 1: Tiền xử lý & OCR</button>
+                <button class="tab-btn" onclick="switchTab('phase2')">Pha 2: Truy xuất ngữ nghĩa</button>
+                <button class="tab-btn" onclick="switchTab('phase3')">Pha 3: Sinh câu trả lời</button>
+            </div>
+            
+            <button class="theme-toggle-btn" id="theme-toggle">
+                🌓 Sáng/Tối
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <!-- LEFT COLUMN: interactive flows -->
+        <section class="flow-section">
+            <div class="glass-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title" id="panel-main-title">📊 Sơ Đồ Quy Trình Tiền Xử Lý Dữ Liệu</h2>
+                    <span class="panel-badge" id="panel-badge-text">Pha 1</span>
+                </div>
+
+                <!-- PHASE 1: INGESTION VIEW -->
+                <div class="flow-view active-view" id="view-phase1">
+                    <div class="pipeline-container">
+                        
+                        <!-- Preprocessing general bounds -->
+                        <div class="boundary-box primary-boundary">
+                            <div class="boundary-label">Bộ Tiền Xử Lý Dữ Liệu (Data Preprocessing)</div>
+                            
+                            <div class="pipeline-container" style="gap: 2rem;">
+                                <!-- ROW 1: PDF scan input & general flow -->
+                                <div class="flow-row">
+                                    <div class="node-card" id="node-input" onclick="showDetails('input', 1)">
+                                        <div class="node-icon">📄</div>
+                                        <div class="node-title">Input Document</div>
+                                        <div class="node-desc">File luật .pdf scan hoặc digital</div>
+                                    </div>
+                                    
+                                    <div class="arrow-connector">
+                                        <div class="pulse-dot" id="dot-1"></div>
+                                    </div>
+
+                                    <div class="node-card" id="node-ocr" onclick="showDetails('ocr', 1)">
+                                        <div class="node-icon">⚙️</div>
+                                        <div class="node-title">OCR Router</div>
+                                        <div class="node-desc">Đánh giá & băm nhỏ PDF</div>
+                                    </div>
+
+                                    <div class="arrow-connector">
+                                        <div class="pulse-dot" id="dot-2"></div>
+                                    </div>
+
+                                    <div class="node-card" id="node-parser" onclick="showDetails('parser', 1)">
+                                        <div class="node-icon">🧬</div>
+                                        <div class="node-title">Law Parser</div>
+                                        <div class="node-desc">Phân tích Chương/Điều/Khoản</div>
+                                    </div>
+                                </div>
+
+                                <!-- ROW 2: Inner OCR steps details -->
+                                <div class="boundary-box">
+                                    <div class="boundary-label">Chi tiết Quy Trình OCR (Paddle-VietOCR-ProtonX)</div>
+                                    <div class="flow-row">
+                                        <div class="node-card ocr-node" id="node-paddle" onclick="showDetails('paddle', 1)">
+                                            <div class="node-icon">🔵</div>
+                                            <div class="node-title">PaddleOCR</div>
+                                            <div class="node-desc">Nhận diện layout & bounding box</div>
+                                        </div>
+                                        
+                                        <div class="arrow-connector">
+                                            <div class="pulse-dot ocr-dot" id="dot-ocr-1"></div>
+                                        </div>
+
+                                        <div class="node-card ocr-node" id="node-vietocr" onclick="showDetails('vietocr', 1)">
+                                            <div class="node-icon">🇻🇳</div>
+                                            <div class="node-title">VietOCR</div>
+                                            <div class="node-desc">Chuyển ký tự ảnh sang Tiếng Việt</div>
+                                        </div>
+
+                                        <div class="arrow-connector">
+                                            <div class="pulse-dot ocr-dot" id="dot-ocr-2"></div>
+                                        </div>
+
+                                        <div class="node-card ocr-node" id="node-protonx" onclick="showDetails('protonx', 1)">
+                                            <div class="node-icon">🤖</div>
+                                            <div class="node-title">ProtonX Post-OCR</div>
+                                            <div class="node-desc">Sửa lỗi chính tả, căn chỉnh dòng</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ROW 3: Chunker & BGE-M3 Embeddings -->
+                                <div class="flow-row">
+                                    <div class="node-card" id="node-chunker" onclick="showDetails('chunker', 1)">
+                                        <div class="node-icon">✂️</div>
+                                        <div class="node-title">Doc Chunker</div>
+                                        <div class="node-desc">Chia các mảnh nhỏ giàu siêu dữ liệu</div>
+                                    </div>
+                                    
+                                    <div class="arrow-connector">
+                                        <div class="pulse-dot" id="dot-3"></div>
+                                    </div>
+
+                                    <div class="node-card" id="node-embeddings" onclick="showDetails('embeddings', 1)">
+                                        <div class="node-icon">🧠</div>
+                                        <div class="node-title">BGE-M3 Embed</div>
+                                        <div class="node-desc">Sinh vector chuẩn hóa L2 1024-dim</div>
+                                    </div>
+
+                                    <div class="arrow-connector">
+                                        <div class="pulse-dot" id="dot-4"></div>
+                                    </div>
+
+                                    <div class="node-card" id="node-faiss" onclick="showDetails('faiss', 1)">
+                                        <div class="node-icon">🗄️</div>
+                                        <div class="node-title">FAISS DB</div>
+                                        <div class="node-desc">Lưu trữ chỉ mục vector tìm kiếm nhanh</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PHASE 2: DETAILED DUAL-PATH RETRIEVAL VIEW -->
+                <div class="flow-view" id="view-phase2">
+                    <div class="pipeline-container">
+                        
+                        <div class="boundary-box primary-boundary">
+                            <div class="boundary-label">Bộ máy Truy xuất Hỗn hợp & Rerank (Detailed Hybrid Retrieval Core)</div>
+                            
+                            <div class="pipeline-container" style="gap: 1.5rem;">
+                                <!-- Input Query Node -->
+                                <div class="flow-row" style="justify-content: center;">
+                                    <div class="node-card" id="node-p2query" onclick="showDetails('p2query', 2)">
+                                        <div class="node-icon">❓</div>
+                                        <div class="node-title">User Query</div>
+                                        <div class="node-desc">Nhập câu hỏi ngôn ngữ tự nhiên</div>
+                                    </div>
+                                </div>
+
+                                <!-- Dual Path Fork -->
+                                <div class="fork-container">
+                                    <!-- PATH A: Sparse (Lexical) Search -->
+                                    <div class="fork-path">
+                                        <div class="fork-label sparse-label">📈 Đường Truy xuất Từ khóa (Sparse Path)</div>
+                                        <div class="node-card ocr-node" id="node-p2tok" onclick="showDetails('p2tok', 2)">
+                                            <div class="node-icon">✂️</div>
+                                            <div class="node-title">VN Tokenizer</div>
+                                            <div class="node-desc">Tách từ tố & loại bỏ ký tự trống</div>
+                                        </div>
+                                        
+                                        <div class="node-card ocr-node" id="node-p2bm25" onclick="showDetails('p2bm25', 2)">
+                                            <div class="node-icon">🗂️</div>
+                                            <div class="node-title">BM25 Search</div>
+                                            <div class="node-desc">Tính BM25Okapi trên bm25.pkl</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- PATH B: Dense (Semantic) Search -->
+                                    <div class="fork-path">
+                                        <div class="fork-label dense-label">🧠 Đường Truy xuất Ngữ nghĩa (Dense Path)</div>
+                                        <div class="node-card" id="node-p2bi" onclick="showDetails('p2bi', 2)">
+                                            <div class="node-icon">🧠</div>
+                                            <div class="node-title">BGE-M3 (Bi-Encoder)</div>
+                                            <div class="node-desc">Mã hóa câu hỏi thành Vector 1024d</div>
+                                        </div>
+                                        
+                                        <div class="node-card" id="node-p2faiss" onclick="showDetails('p2faiss', 2)">
+                                            <div class="node-icon">🗄️</div>
+                                            <div class="node-title">FAISS Search</div>
+                                            <div class="node-desc">Quét tương đồng Cosine cực nhanh</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Rank Fusion & Rerank Row -->
+                                <div class="flow-row">
+                                    <div class="node-card" id="node-p2rrf" onclick="showDetails('p2rrf', 2)" style="border-color: #f59e0b;">
+                                        <div class="node-icon">⚡</div>
+                                        <div class="node-title">RRF Merge</div>
+                                        <div class="node-desc">Hợp nhất xếp hạng thứ tự (k = 60)</div>
+                                    </div>
+
+                                    <div class="arrow-connector">
+                                        <div class="pulse-dot green-dot" id="dot-p2-3"></div>
+                                    </div>
+
+                                    <div class="node-card" id="node-p2ce" onclick="showDetails('p2ce', 2)" style="width: 210px;">
+                                        <div class="node-icon">🔄</div>
+                                        <div class="node-title">Cross-Encoder Rerank</div>
+                                        <div class="node-desc">ce_bge_reranker_ft_v6 chấm điểm Self-Attention</div>
+                                    </div>
+
+                                    <div class="arrow-connector">
+                                        <div class="pulse-dot green-dot" id="dot-p2-4"></div>
+                                    </div>
+
+                                    <div class="node-card" id="node-p2context" onclick="showDetails('p2context', 2)">
+                                        <div class="node-icon">🧬</div>
+                                        <div class="node-title">Build Context</div>
+                                        <div class="node-desc">Đầu ra top 5 chunks chất lượng cao</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- PHASE 3: 2-TIER GENERATOR VIEW -->
+                <div class="flow-view" id="view-phase3">
+                    <div class="pipeline-container">
+                        
+                        <div class="boundary-box primary-boundary" style="border-color: #db2777; background: rgba(219, 39, 119, 0.005);">
+                            <div class="boundary-label" style="color: #db2777;">Bộ Sinh Câu Trả Lời & Kiểm Duyệt (2-Tier Generator)</div>
+                            
+                            <div class="pipeline-container" style="gap: 1.8rem;">
+                                <!-- Input & Context Builder -->
+                                <div class="flow-row">
+                                    <div class="node-card" id="node-p3chunks" onclick="showDetails('p3chunks', 3)">
+                                        <div class="node-icon">📋</div>
+                                        <div class="node-title">Context Chunks</div>
+                                        <div class="node-desc">Top 5 chunks ngữ cảnh từ Pha 2</div>
+                                    </div>
+
+                                    <div class="arrow-connector">
+                                        <div class="pulse-dot pink-dot" id="dot-p3-1"></div>
+                                    </div>
+
+                                    <div class="node-card" id="node-p3builder" onclick="showDetails('p3builder', 3)">
+                                        <div class="node-icon">🧬</div>
+                                        <div class="node-title">Context Builder</div>
+                                        <div class="node-desc">Khử trùng lặp, bóc tách siêu dữ liệu</div>
+                                    </div>
+
+                                    <div class="arrow-connector">
+                                        <div class="pulse-dot pink-dot" id="dot-p3-2"></div>
+                                    </div>
+
+                                    <div class="node-card" id="node-p3prompt" onclick="showDetails('p3prompt', 3)">
+                                        <div class="node-icon">📝</div>
+                                        <div class="node-title">Prompt Engine</div>
+                                        <div class="node-desc">System Prompt chỉ thị SGU nghiêm ngặt</div>
+                                    </div>
+                                </div>
+
+                                <!-- Gating Layer & Tier Routing -->
+                                <div class="boundary-box" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.015);">
+                                    <div class="boundary-label" style="color: #f59e0b;">Lớp Gating Độc Lập & Định Tuyến 2 Tầng (Routing System)</div>
+                                    
+                                    <div class="flow-row" style="gap: 1.5rem; justify-content: space-around;">
+                                        <div class="node-card" id="node-p3gating" onclick="showDetails('p3gating', 3)" style="border-color: #f59e0b; width: 190px;">
+                                            <div class="node-icon">🛡️</div>
+                                            <div class="node-title">Gating Layer</div>
+                                            <div class="node-desc">Tính toán độ tin cậy và margin</div>
+                                        </div>
+
+                                        <div class="node-card ocr-node" id="node-p3abstain" onclick="showDetails('p3abstain', 3)">
+                                            <div class="node-icon">❌</div>
+                                            <div class="node-title">Abstain Fallback</div>
+                                            <div class="node-desc">Từ chối lịch sự khi score quá thấp</div>
+                                        </div>
+
+                                        <div class="node-card" id="node-p3local" onclick="showDetails('p3local', 3)" style="border-color: #db2777;">
+                                            <div class="node-icon">🟢</div>
+                                            <div class="node-title">Tier 1: LOCAL LLM</div>
+                                            <div class="node-desc">Local Qwen/Llama khi score cực cao</div>
+                                        </div>
+
+                                        <div class="node-card" id="node-p3api" onclick="showDetails('p3api', 3)" style="border-color: #0284c7;">
+                                            <div class="node-icon">🔵</div>
+                                            <div class="node-title">Tier 2: API LLM</div>
+                                            <div class="node-desc">Gemini 1.5 Pro cho câu hỏi khó</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Execution & Output Validation -->
+                                <div class="flow-row">
+                                    <div class="node-card" id="node-p3client" onclick="showDetails('p3client', 3)">
+                                        <div class="node-icon">🤖</div>
+                                        <div class="node-title">LLM Engine Client</div>
+                                        <div class="node-desc">Sinh văn bản (Hỗ trợ auto-fallback sang Local)</div>
+                                    </div>
+
+                                    <div class="arrow-connector">
+                                        <div class="pulse-dot pink-dot" id="dot-p3-3"></div>
+                                    </div>
+
+                                    <div class="node-card" id="node-p3validator" onclick="showDetails('p3validator', 3)">
+                                        <div class="node-icon">🔬</div>
+                                        <div class="node-title">Citation Validator</div>
+                                        <div class="node-desc">Đối chiếu chéo trích dẫn với nguồn luật gốc</div>
+                                    </div>
+
+                                    <div class="arrow-connector">
+                                        <div class="pulse-dot pink-dot" id="dot-p3-4"></div>
+                                    </div>
+
+                                    <div class="node-card" id="node-p3output" onclick="showDetails('p3output', 3)" style="border-color: var(--success); box-shadow: 0 0 15px var(--success-glow);">
+                                        <div class="node-icon">✨</div>
+                                        <div class="node-title">Final Answer</div>
+                                        <div class="node-desc">Câu trả lời hoàn chỉnh kèm citations chuẩn xác</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- RIGHT COLUMN: dynamic detailed viewer & sandbox uploader -->
+        <section class="info-section">
+            <!-- Node Detail Hub -->
+            <div class="glass-panel step-details-card">
+                <div class="panel-header">
+                    <h2 class="panel-title">🔬 Chi Tiết Phân Đoạn Hệ Thống</h2>
+                    <span class="panel-badge" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); color: var(--success);">Tương Tác</span>
+                </div>
+
+                <div id="detail-card-viewport">
+                    <div class="detail-placeholder">
+                        <span>💡</span>
+                        <h3>Bấm vào bất kỳ thành phần nào trong sơ đồ</h3>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; max-width: 280px;">Để hiển thị chi tiết nghiệp vụ, cấu trúc dữ liệu đầu vào/đầu ra và mã nguồn tương ứng.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pipeline Simulator Sandbox -->
+            <div class="glass-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title" id="sim-panel-title">🖥️ Trình Giả Lập Ingestion Pipeline</h2>
+                    <span class="panel-badge" style="background:rgba(249, 115, 22, 0.1); border-color:rgba(249, 115, 22, 0.2); color:var(--secondary);" id="sim-panel-badge">Bản Demo</span>
+                </div>
+
+                <div class="terminal-panel">
+                    <div class="terminal-header">
+                        <div class="terminal-dots">
+                            <div class="terminal-dot dot-red"></div>
+                            <div class="terminal-dot dot-yellow"></div>
+                            <div class="terminal-dot dot-green"></div>
+                        </div>
+                        <span id="terminal-filename">ingest_pipeline.log — console</span>
+                    </div>
+
+                    <div class="terminal-console" id="console-stream">
+                        <div class="log-line text-gray-500">Hệ thống sẵn sàng. Vui lòng bấm "Chạy Giả Lập" để bắt đầu quy trình.</div>
+                    </div>
+                </div>
+
+                <div class="status-summary" id="stats-container">
+                    <div class="status-summary-item">
+                        <span id="stat-label-1">Mảnh sinh ra (Chunks)</span>
+                        <strong id="stat-chunks">—</strong>
+                    </div>
+                    <div class="status-summary-item">
+                        <span id="stat-label-2">Số chiều vector (Dim)</span>
+                        <strong id="stat-dims">—</strong>
+                    </div>
+                    <div class="status-summary-item">
+                        <span id="stat-label-3">Database FAISS</span>
+                        <strong id="stat-total">—</strong>
+                    </div>
+                </div>
+
+                <div class="simulator-control-panel">
+                    <button class="sim-btn" id="run-simulation-btn">🚀 Chạy Giả Lập</button>
+                    <button class="sim-btn secondary-btn" id="clear-console-btn">🧹 Dọn Dẹp</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Saigon University (SGU) © 2026 - RAG Legal Document System. Developed with Antigravity AI.</p>
+    </footer>
+
+    <script>
+        // Active Phase Tracker
+        let activePhase = 1;
+
+        // Details Data for nodes
+        const nodesDataPhase1 = {
+            input: {
+                title: "Văn bản Pháp luật Đầy đủ (Input Document)",
+                badge: "Khởi Đầu",
+                desc: "Văn bản Nghị định chính quyền địa phương 2 cấp ở định dạng PDF. Hệ thống hỗ trợ xử lý cả 2 loại: PDF số hóa (Digital) chứa văn bản thô trực tiếp hoặc PDF quét ảnh (Scanned/OCR) cần nhận diện ký tự quang học.",
+                meta: [
+                    ["Định dạng", "Adobe PDF (.pdf)"],
+                    ["Kích thước tối đa", "100 MB"],
+                    ["Phương thức kiểm tra", "Hash SHA-256 mã độc & trùng lặp"]
+                ]
+            },
+            ocr: {
+                title: "OCR Router & Hợp nhất văn bản",
+                badge: "Quyết Định",
+                desc: "Bộ định tuyến dữ liệu. Đầu tiên hệ thống thử trích xuất ký tự digital bằng pdfplumber. Nếu tài liệu là file scan (phát hiện số lượng ký tự thô < 100), hệ thống sẽ chuyển hướng toàn bộ file sang quy trình OCR 3 tầng chuyên sâu.",
+                meta: [
+                    ["Module", "scripts/ingest_new_pdf.py"],
+                    ["Ký tự Digital tối thiểu", "100 ký tự"],
+                    ["Dữ liệu trả về", "ocr_json_path (staging)"]
+                ]
+            },
+            paddle: {
+                title: "PaddleOCR Layout Analysis",
+                badge: "Bước OCR 1",
+                desc: "Chương trình trích xuất đồ họa của Paddle. Module chia văn bản trang giấy dạng ảnh thành các khung chứa chữ (bounding boxes) riêng lẻ, phân tách chính xác giữa bảng biểu, chữ in tiêu đề và nội dung bài viết.",
+                meta: [
+                    ["Thư viện", "paddleocr (Local model)"],
+                    ["Độ chính xác layout", "~96.5%"],
+                    ["Đầu ra", "Vùng ảnh chứa ký tự (Crop Box Images)"]
+                ]
+            },
+            vietocr: {
+                title: "VietOCR Character Recognition",
+                badge: "Bước OCR 2",
+                desc: "Mô hình nhận diện ký tự quang học tiếng Việt được tối ưu hóa. Đọc từng vùng cắt (crop box) từ PaddleOCR và chuyển dịch ký tự ảnh thành chuỗi ký tự Unicode Tiếng Việt có dấu hoàn chỉnh.",
+                meta: [
+                    ["Thư viện", "vietocr (CRNN-LSTM)"],
+                    ["Ngôn ngữ", "Tiếng Việt chuẩn"],
+                    ["Mục tiêu", "Hạn chế mất dấu tiếng Việt"]
+                ]
+            },
+            protonx: {
+                title: "ProtonX Post-Processing",
+                badge: "Bước OCR 3",
+                desc: "Bộ hiệu chỉnh và chuẩn hóa văn bản cuối cùng trong chuỗi OCR. Hợp nhất các đoạn đứt dòng, ghép từ bị cắt ở cuối dòng, chuẩn hóa cấu trúc ngắt trang [PAGE_N] và lưu thành full text hợp nhất.",
+                meta: [
+                    ["Tệp nguồn", "rules_base_protonx.py"],
+                    ["Kiểm tra tính hợp lệ", "Từ khóa: căn cứ, điều, khoản..."],
+                    ["Đầu ra", "full_text_path (Dạng text liền mạch)"]
+                ]
+            },
+            parser: {
+                title: "Law Parser (Phân tích cấu trúc Luật)",
+                badge: "Phân Tách",
+                desc: "Bộ xử lý cấu trúc lập pháp chuyên sâu. Đọc toàn văn bản và ứng dụng giải thuật Regular Expression phức tạp để ánh xạ cấu trúc pháp lý. Tách biệt văn bản thành các thuộc tính đối tượng Chương, Điều, Khoản, Điểm rõ ràng.",
+                meta: [
+                    ["Tệp nguồn", "ChatBot/xldl/legal_parser.py"],
+                    ["Lớp xử lý", "class LawParser()"],
+                    ["Thuộc tính phân tích", "so_hieu, loai_van_ban, co_quan_ban_hanh"]
+                ]
+            },
+            chunker: {
+                title: "Document Chunker (Chia mảnh dữ liệu)",
+                badge: "Phân Mảnh",
+                desc: "Hệ thống cắt văn bản thành các phân đoạn nhỏ độc lập (chunks) dựa trên các Điều và Khoản đã tách. Sau đó làm giàu siêu dữ liệu (enrich metadata) để bảo toàn tuyệt đối nguồn trích dẫn chương điều của mảnh luật.",
+                meta: [
+                    ["Tệp nguồn", "ChatBot/xldl/chunks.py"],
+                    ["Cấu trúc Chunk", "Text + Metadata object"],
+                    ["Thuộc tính tích hợp", "doc_id, file_sha256, page_start/end"]
+                ]
+            },
+            embeddings: {
+                title: "BGE-M3 (Sinh Vector Nhúng)",
+                badge: "Tính Toán",
+                desc: "Mô hình ngôn ngữ nhúng đa ngôn ngữ mạnh mẽ của BAAI, được fine-tune chuyên biệt cho ngữ cảnh pháp lý Việt Nam. Biến đổi mỗi mảnh văn bản (text chunk) thành 1 vector biểu diễn số 1024 chiều và thực hiện chuẩn hóa L2.",
+                meta: [
+                    ["Model dẫn", "cross-encoder/outputs/models/bi_bge_m3_ft"],
+                    ["Số chiều (Dimensions)", "1024 chiều"],
+                    ["Chuẩn hóa vector", "L2 Normalization (FAISS phù hợp)"]
+                ]
+            },
+            faiss: {
+                title: "FAISS Vector DB & BM25 Index",
+                badge: "Lưu Trữ",
+                desc: "Hợp nhất cơ sở dữ liệu. Thực hiện cơ chế lưu trữ an toàn nguyên tử (Atomic commit). Đưa vector nhúng mới vào FAISS Index, nối chunks mới vào metadata.json và tự động tạo lại chỉ mục từ khóa BM25 Search Index.",
+                meta: [
+                    ["Cơ sở dữ liệu", "FAISS (Facebook AI Similarity Search)"],
+                    ["Chỉ mục từ khóa", "rank-bm25 (BM25Okapi)"],
+                    ["Chế độ bảo mật", "Sao lưu tự động & Rollback khi lỗi"]
+                ]
+            }
+        };
+
+        const nodesDataPhase2 = {
+            p2query: {
+                title: "Câu hỏi của Người dùng (User Query)",
+                badge: "Khởi Đầu",
+                desc: "Nhận câu hỏi thắc mắc pháp lý bằng ngôn ngữ tự nhiên từ giao diện người dùng. Ví dụ: 'Nghị định 303 quy định đối tượng tinh giản biên chế như thế nào?'. Phân tích cú pháp cơ bản và gửi song song sang cả 2 nhánh truy xuất.",
+                meta: [
+                    ["Đầu vào", "Chuỗi ký tự Tiếng Việt"],
+                    ["Phương pháp phân phối", "Song hành (Sparse & Dense Parallel Path)"]
+                ]
+            },
+            p2tok: {
+                title: "Vietnamese Tokenizer (Sparse Path)",
+                badge: "Sparse Bước 1",
+                desc: "Bộ phân tích từ tố Tiếng Việt đơn giản cho phương pháp BM25. Chuyển hóa toàn bộ chuỗi câu hỏi thành chữ thường (lowercase) và sử dụng Biểu thức chính quy Regex chuyên biệt để bóc tách, giữ lại các chữ cái tiếng Việt có dấu và chữ số, loại bỏ hoàn toàn ký hiệu thừa.",
+                meta: [
+                    ["Hàm mã nguồn", "LegalRetriever._tokenize_vi(query)"],
+                    ["Xử lý đặc biệt", "Giữ lại chính xác số hiệu: 303, 08..."],
+                    ["Đầu ra", "Mảng các tokens từ khóa"]
+                ]
+            },
+            p2bm25: {
+                title: "BM25 Search Index (Lexical Search)",
+                badge: "Sparse Bước 2",
+                desc: "Thực hiện tìm kiếm từ khóa tần suất cao trên tệp chỉ mục tải sẵn bm25.pkl. Hệ thống chấm điểm mức độ trùng khớp từ khóa giữa các tokens trong câu hỏi với toàn bộ các mảnh văn bản (chunks) lưu giữ trong kho dữ liệu.",
+                meta: [
+                    ["Thư viện", "rank_bm25 (BM25Okapi)"],
+                    ["Tệp dữ liệu", "vector_data/production/bm25.pkl"],
+                    ["Số ứng viên lấy ra (BM25_K)", "BM25_K = 100 candidates"]
+                ],
+                math: "BM25_Score(D, Q) = ∑ [ IDF(q_i) * (f(q_i, D)*(k1+1)) / (f(q_i, D) + k1*(1 - b + b*(|D|/avgdl))) ]"
+            },
+            p2bi: {
+                title: "BGE-M3 Bi-Encoder (Dense Path)",
+                badge: "Dense Bước 1",
+                desc: "Mô hình Bi-Encoder cục bộ thực hiện mã hóa (encode) toàn bộ ý nghĩa ngữ cảnh của câu hỏi thành một biểu diễn vector số thực duy nhất. Vector này mang đầy đủ đặc trưng ngữ cảnh để so sánh không gian.",
+                meta: [
+                    ["Model sử dụng", "bi_bge_m3_ft (Fine-tuned)"],
+                    ["Định dạng đầu ra", "Vector số thực 1024 chiều (float32)"],
+                    ["Chuẩn hóa", "L2 Normalization (chuẩn hóa độ dài = 1)"]
+                ],
+                math: "Query -> Vector Q = [x1, x2, ..., x1024] ∈ R^1024"
+            },
+            p2faiss: {
+                title: "FAISS Vector Search (Dense Path)",
+                badge: "Dense Bước 2",
+                desc: "Thực hiện tìm kiếm vector tương đồng ngữ nghĩa trên không gian cơ sở dữ liệu FAISS. Vì các vector nhúng đều đã được chuẩn hóa L2, phép tính Cosine Similarity rút gọn trực tiếp thành tích vô hướng (Inner Product) giúp tốc độ tìm kiếm đạt micro-giây.",
+                meta: [
+                    ["Tệp chỉ mục", "vector_data/production/index.faiss"],
+                    ["Độ đo tương đồng", "Cosine Similarity (Tích vô hướng)"],
+                    ["Số ứng viên lấy ra (DENSE_K)", "DENSE_K = 100 candidates"]
+                ],
+                math: "Cosine_Similarity = A · B (nếu ||A||=||B||=1)"
+            },
+            p2rrf: {
+                title: "Reciprocal Rank Fusion (RRF Merge)",
+                badge: "Hợp Nhất",
+                desc: "Thuật toán hợp nhất xếp hạng đa nguồn. Nhận hai danh sách ứng viên (100 từ BM25 và 100 từ FAISS) có phân bố điểm gốc hoàn toàn khác nhau. RRF quy đổi vị trí thứ hạng của từng tài liệu trong hai danh sách thành một điểm số thống nhất để loại bỏ trùng lặp và giữ lại các mảnh văn bản tốt nhất.",
+                meta: [
+                    ["Hàm mã nguồn", "LegalRetriever._rrf_merge"],
+                    ["Hằng số mượt (k)", "k = 60"],
+                    ["Đầu ra danh sách", "N = 100 ứng viên rank-fused tối ưu"]
+                ],
+                math: "RRF_Score(d) = ∑_{m ∈ M} [ 1 / (60 + rank_m(d)) ]"
+            },
+            p2ce: {
+                title: "Cross-Encoder Reranker (ce_bge_reranker)",
+                badge: "Tái Định Hạng",
+                desc: "Bộ Cross-Encoder cục bộ chuyên sâu. Khác với Bi-Encoder mã hóa độc lập, Cross-Encoder đưa đồng thời cả cặp (Câu hỏi, Mảnh văn bản ứng viên) vào mô hình, khai thác triệt để cơ chế Self-Attention đa đầu để tính toán điểm tương đồng chéo trực tiếp giữa mọi từ tố của câu hỏi với mọi từ tố của đoạn luật, đạt độ chính xác vô cùng vượt trội.",
+                meta: [
+                    ["Model sử dụng", "ce_bge_reranker_ft_v6 (Fine-tuned v6)"],
+                    ["Giới hạn xử lý (CPU)", "MAX_CE_CANDIDATES = 25"],
+                    ["Số kết quả giữ lại (K)", "K = 5 chunks chất lượng cao nhất"]
+                ],
+                math: "Score = CrossEncoder(Query, Passage) ∈ R"
+            },
+            p2context: {
+                title: "Build Context (Ngữ Cảnh Trực Tiếp)",
+                badge: "Đầu Ra Truy Xuất",
+                desc: "Lấy 5 đoạn văn bản luật chất lượng cao nhất từ Cross-Encoder, gộp thành một khối ngữ cảnh (Context Block) hoàn chỉnh, làm sạch các đoạn trùng lặp nhỏ, đồng thời giữ nguyên siêu dữ liệu trích dẫn nguồn luật (Văn bản nào, Điều mấy, Khoản mấy) phục vụ LLM.",
+                meta: [
+                    ["Tệp nguồn", "context_builder.py"],
+                    ["Thuộc tính đi kèm", "van_ban, chuong, dieu, khoan, page_number"],
+                    ["Mục tiêu", "Dữ liệu sạch hoàn toàn trước khi chuyển sang LLM"]
+                ]
+            }
+        };
+
+        const nodesDataPhase3 = {
+            p3chunks: {
+                title: "Context Chunks (Đầu vào Pha 3)",
+                badge: "Đầu Vào",
+                desc: "Nhận 5 chunks ngữ cảnh pháp lý tối ưu nhất được chắt lọc từ Pha 2. Đi kèm các thông tin siêu dữ liệu về điều khoản nguồn gốc.",
+                meta: [
+                    ["Số lượng mảnh tối đa", "K = 5 chunks"],
+                    ["Tình trạng", "Đã qua Cross-Encoder định hạng chéo"]
+                ]
+            },
+            p3builder: {
+                title: "Context Builder (Dựng ngữ cảnh)",
+                badge: "Xử Lý 1",
+                desc: "Module xử lý thô ngữ cảnh. Thực hiện thuật toán băm (hashing) chuỗi 200 ký tự đầu tiên để khử trùng lặp dữ liệu triệt để (deduplication) tránh lặp từ, trim khoảng trắng thừa, và cấu trúc hóa siêu dữ liệu nguồn luật đi kèm.",
+                meta: [
+                    ["Mã nguồn", "generation/context_builder.py"],
+                    ["Lớp xử lý", "class ContextBuilder()"],
+                    ["Tải trọng", "Dựng Context String chuẩn hóa"]
+                ]
+            },
+            p3prompt: {
+                title: "Prompt Engineering (Thiết kế Prompt)",
+                badge: "Xử Lý 2",
+                desc: "Nhúng ngữ cảnh đã chuẩn hóa và câu hỏi của người dùng vào một cấu trúc chỉ thị prompt hệ thống nghiêm ngặt. Chỉ định LLM chỉ trả lời dựa vào ngữ cảnh được cung cấp, cấm tự bịa đặt kiến thức pháp luật (Hallucination guardrails).",
+                meta: [
+                    ["Mã nguồn", "generation/prompt_templates.py"],
+                    ["Mẫu System Prompt", "SGU Legal Template (Vietnamese)"],
+                    ["Chế độ thu gọn (Compact)", "Tự động kích hoạt khi dùng Llama/Qwen"]
+                ]
+            },
+            p3gating: {
+                title: "Gating Layer & Tier Router",
+                badge: "Hệ Định Tuyến",
+                desc: "Bộ định tuyến 2 cấp thông minh độc lập của SGU. Lớp này tính toán điểm Cross-Encoder của mảnh dẫn đầu và margin khoảng cách. Nếu tin cậy rất cao và margin lớn, route sang LOCAL LLM. Nếu trung bình, route sang API LLM. Nếu score quá thấp, kích hoạt Abstain Fallback từ chối lịch sự.",
+                meta: [
+                    ["Mã nguồn", "generation/gating.py"],
+                    ["Ngưỡng LOCAL (Pass)", "Score >= 8.0 hoặc Sigmoid >= 0.99"],
+                    ["Ngưỡng ABSTAIN (Từ chối)", "Score < -5.0 hoặc Sigmoid < 0.05"]
+                ],
+                math: "If score >= 8.0 & margin >= 0.03 -> Tier 1 (LOCAL)\nElse if score < -5.0 -> ABSTAIN\nElse -> Tier 2 (API / Cautious)"
+            },
+            p3abstain: {
+                title: "Abstain Fallback (Từ chối an toàn)",
+                badge: "Lớp Fallback",
+                desc: "Kịch bản bảo vệ an toàn cho hệ thống lập pháp. Khi dữ liệu nạp vào không chứa thông tin trả lời, hệ thống chặn đứng cuộc gọi LLM đắt đỏ và trả về ngay thông báo từ chối lịch sự, tránh tối đa việc LLM trả lời sai lệch thông tin luật pháp.",
+                meta: [
+                    ["Mã nguồn", "generation/fallback.py"],
+                    ["Thông điệp", "Từ chối lịch sự và gợi ý câu hỏi liên quan"],
+                    ["Lợi ích", "An toàn thông tin 100%, chống hallucination"]
+                ]
+            },
+            p3local: {
+                title: "Tier 1: LOCAL LLM (Mô hình nội bộ)",
+                badge: "Mô Hình 1",
+                desc: "Mô hình ngôn ngữ lớn chạy trực tiếp cục bộ trên máy chủ dự án (như Qwen, LLaMA). Được định tuyến cho các câu hỏi cực kỳ dễ, rõ ràng, có điểm tương đồng vượt trội, giúp tăng tốc phản hồi tối đa và tiết kiệm chi phí.",
+                meta: [
+                    ["Mô hình tích hợp", "Qwen-7B / Llama-3-8B-Instruct Cục Bộ"],
+                    ["Hình thức nạp", "llama.cpp server / local transformers"],
+                    ["Đặc tính", "Không tốn chi phí gọi API, bảo mật dữ liệu tuyệt đối"]
+                ]
+            },
+            p3api: {
+                title: "Tier 2: API LLM (Mô hình đám mây)",
+                badge: "Mô Hình 2",
+                desc: "Định tuyến tới mô hình ngôn ngữ lớn mạnh mẽ nhất qua API (như Gemini 1.5 Pro). Được kích hoạt khi câu hỏi phức tạp, cần lập luận đa tầng hoặc nằm trong vùng cautious, giúp đảm bảo chất lượng phản hồi lập pháp tốt nhất.",
+                meta: [
+                    ["Mô hình đám mây", "Gemini 1.5 Pro / Flash API"],
+                    ["Hỗ trợ đặc biệt", "Cơ chế Tự Động Thử Lại (Auto-Retry)"],
+                    ["Hình thức dự phòng", "Auto-fallback sang Local LLM khi lỗi mạng/429"]
+                ]
+            },
+            p3client: {
+                title: "LLM Engine Client (Cổng điều phối)",
+                badge: "Thực Thi",
+                desc: "Lớp điều phối cuộc gọi LLM thực tế. Module nhận lệnh từ Tier Router để gọi đúng LLM, đồng thời tích hợp logic bắt lỗi ngoại lệ mạng, hạn mức API (Anti-429) và điều phối dự phòng thông minh giữa 2 cấp mô hình.",
+                meta: [
+                    ["Mã nguồn", "generation/llm_client.py"],
+                    ["Hàm thực thi", "LLMClient.generate()"],
+                    ["Khả năng chịu lỗi", "Retry limit tối đa 3 lần"]
+                ]
+            },
+            p3validator: {
+                title: "Citation Validator (Đối chiếu chéo)",
+                badge: "Kiểm Duyệt",
+                desc: "Bộ kiểm duyệt đầu ra tối cao của SGU. Sử dụng Regular Expression để bóc tách các nhãn trích dẫn nguồn luật mà LLM sinh ra trong câu trả lời thô. Thực hiện đối chiếu chéo toán học (cross-referencing) nguồn luật tự sinh này với metadata thực tế của 5 chunks gốc để lọc bỏ hoặc sửa đổi các trích dẫn ảo tưởng.",
+                meta: [
+                    ["Tệp nguồn xử lý", "generation/run_generation.py"],
+                    ["Thuật toán", "Regex tags parser + metadata mapping"],
+                    ["Mục tiêu", "Đảm bảo nguồn luật dẫn chứng chính xác 100%"]
+                ]
+            },
+            p3output: {
+                title: "Final Answer (Đầu ra hoàn chỉnh)",
+                badge: "Đầu Ra",
+                desc: "Văn bản câu trả lời Tiếng Việt mạch lạc, chính xác cao, được định dạng markdown chuyên nghiệp, kèm theo các nhãn trích dẫn trực quan và chính xác đến từng Điều, Khoản, số hiệu Nghị định gốc của Chính phủ.",
+                meta: [
+                    ["Định dạng trả về", "Markdown text + Citations Array JSON"],
+                    ["Độ tin cậy nguồn luật", "100% Xác thực thực tế"]
+                ]
+            }
+        };
+
+        // DOM Elements
+        const themeToggle = document.getElementById('theme-toggle');
+        const detailCardViewport = document.getElementById('detail-card-viewport');
+        const consoleStream = document.getElementById('console-stream');
+        const runSimulationBtn = document.getElementById('run-simulation-btn');
+        const clearConsoleBtn = document.getElementById('clear-console-btn');
+        
+        const viewPhase1 = document.getElementById('view-phase1');
+        const viewPhase2 = document.getElementById('view-phase2');
+        const viewPhase3 = document.getElementById('view-phase3');
+        const panelMainTitle = document.getElementById('panel-main-title');
+        const panelBadgeText = document.getElementById('panel-badge-text');
+        const simPanelTitle = document.getElementById('sim-panel-title');
+        const simPanelBadge = document.getElementById('sim-panel-badge');
+        const terminalFilename = document.getElementById('terminal-filename');
+        
+        const statChunks = document.getElementById('stat-chunks');
+        const statDims = document.getElementById('stat-dims');
+        const statTotal = document.getElementById('stat-total');
+
+        const statLabel1 = document.getElementById('stat-label-1');
+        const statLabel2 = document.getElementById('stat-label-2');
+        const statLabel3 = document.getElementById('stat-label-3');
+
+        // Theme Toggle
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('light-theme');
+        });
+
+        // Switch Tabs (Phases)
+        function switchTab(phaseId) {
+            stopSimulation();
+            clearConsole();
+
+            // Toggle active classes on tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active-tab');
+            });
+            
+            // Find active button based on text or arguments
+            if (phaseId === 'phase1') {
+                document.querySelector('.tab-switcher button:nth-child(1)').classList.add('active-tab');
+                viewPhase1.classList.add('active-view');
+                viewPhase2.classList.remove('active-view');
+                viewPhase3.classList.remove('active-view');
+                activePhase = 1;
+                
+                panelMainTitle.innerText = "📊 Sơ Đồ Quy Trình Tiền Xử Lý Dữ Liệu";
+                panelBadgeText.innerText = "Pha 1";
+                simPanelTitle.innerText = "🖥️ Trình Giả Lập Ingestion Pipeline";
+                simPanelBadge.innerText = "Bản Demo";
+                terminalFilename.innerText = "ingest_pipeline.log — console";
+
+                statLabel1.innerText = "Mảnh sinh ra (Chunks)";
+                statLabel2.innerText = "Số chiều vector (Dim)";
+                statLabel3.innerText = "Database FAISS";
+            } else if (phaseId === 'phase2') {
+                document.querySelector('.tab-switcher button:nth-child(2)').classList.add('active-tab');
+                viewPhase1.classList.remove('active-view');
+                viewPhase2.classList.add('active-view');
+                viewPhase3.classList.remove('active-view');
+                activePhase = 2;
+
+                panelMainTitle.innerText = "🔍 Sơ Đồ Truy Xuất Hỗn Hợp & Rerank Chi Tiết";
+                panelBadgeText.innerText = "Pha 2";
+                simPanelTitle.innerText = "🖥️ Trình Giả Lập Hybrid Retrieval Core";
+                simPanelBadge.innerText = "Tương Tác";
+                terminalFilename.innerText = "hybrid_retrieval.log — console";
+
+                statLabel1.innerText = "Số ứng viên FAISS/BM25";
+                statLabel2.innerText = "Mảnh Rerank (K)";
+                statLabel3.innerText = "Hợp Nhất RRF";
+            } else {
+                document.querySelector('.tab-switcher button:nth-child(3)').classList.add('active-tab');
+                viewPhase1.classList.remove('active-view');
+                viewPhase2.classList.remove('active-view');
+                viewPhase3.classList.add('active-view');
+                activePhase = 3;
+
+                panelMainTitle.innerText = "📊 Sơ Đồ Định Tuyến 2 Tầng & Sinh Câu Trả Lời (2-Tier Generator)";
+                panelBadgeText.innerText = "Pha 3";
+                simPanelTitle.innerText = "🖥️ Trình Giả Lập 2-Tier Generator";
+                simPanelBadge.innerText = "Kiểm Duyệt";
+                terminalFilename.innerText = "generator_pipeline.log — console";
+
+                statLabel1.innerText = "Định Tuyến LLM (Tier)";
+                statLabel2.innerText = "Độ Tin Cậy Gating";
+                statLabel3.innerText = "Citation Check";
+            }
+        }
+
+        // Show details function
+        function showDetails(nodeId, phaseNum) {
+            // Remove active classes from all nodes
+            document.querySelectorAll('.node-card').forEach(node => {
+                node.classList.remove('active-node');
+            });
+
+            // Add active class to selected node
+            const selectedNode = document.getElementById(`node-${nodeId}`);
+            if (selectedNode) selectedNode.classList.add('active-node');
+
+            const data = (phaseNum === 1) ? nodesDataPhase1[nodeId] : (phaseNum === 2) ? nodesDataPhase2[nodeId] : nodesDataPhase3[nodeId];
+            if (!data) return;
+
+            let metaRowsHtml = '';
+            data.meta.forEach(row => {
+                metaRowsHtml += `
+                    <div class="detail-meta-row">
+                        <strong>${row[0]}:</strong>
+                        <span>${row[1]}</span>
+                    </div>
+                `;
+            });
+
+            let mathHtml = '';
+            if (data.math) {
+                mathHtml = `
+                    <div class="math-box">🧬 Toán học / Biểu thức:<br>${data.math}</div>
+                `;
+            }
+
+            detailCardViewport.innerHTML = `
+                <div class="detail-content">
+                    <div class="detail-header">
+                        <span class="detail-badge">${data.badge}</span>
+                        <h3 class="detail-title">${data.title}</h3>
+                    </div>
+                    <p class="detail-desc">${data.desc}</p>
+                    <div class="detail-meta-table">
+                        ${metaRowsHtml}
+                    </div>
+                    ${mathHtml}
+                </div>
+            `;
+        }
+
+        // Live Pipeline Simulation Logs
+        const simulationLogsPhase1 = [
+            { type: 'info', text: '--- BẮT ĐẦU PIPELINE INGESTION (Chế độ: commit) ---', delay: 400, step: 'input' },
+            { type: 'info', text: '🔍 Kiểm tra tính hợp lệ của tệp PDF...', delay: 800 },
+            { type: 'success', text: '✔ Tệp hợp lệ. Dung lượng: 4.8 MB. SHA-256: d8e111e76599437191282...', delay: 1200 },
+            { type: 'info', text: '📂 Sao chép file PDF tới staging: vector_data/staging/doc_d8e111e765994371.pdf', delay: 1600 },
+            { type: 'info', text: '--- BƯỚC 2: Nhận diện & Trích xuất Văn bản (OCR) ---', delay: 2000, step: 'ocr' },
+            { type: 'warning', text: '⚠ Rất ít ký tự digital được phát hiện. Kích hoạt quy trình OCR cho file scan.', delay: 2400 },
+            { type: 'info', text: '🤖 Đang nạp mô hình PaddleOCR...', delay: 2800, step: 'paddle' },
+            { type: 'info', text: '🔵 PaddleOCR: Tiến hành phân tích cấu trúc 6 trang tài liệu...', delay: 3300 },
+            { type: 'info', text: '🇻🇳 VietOCR: Tiến hành đọc ký tự từ ảnh...', delay: 3900, step: 'vietocr' },
+            { type: 'info', text: '⚙️ VietOCR: Đã phân tích 186 bounding box thành công.', delay: 4400 },
+            { type: 'info', text: '🤖 ProtonX: Tiến hành ghép nối văn bản, xử lý khoảng cách và sửa lỗi chính tả...', delay: 4900, step: 'protonx' },
+            { type: 'success', text: '✔ Đã tạo full text hợp nhất. Dung lượng: 12,450 ký tự.', delay: 5400 },
+            { type: 'info', text: '--- BƯỚC 4: Phân Tích Cấu Trúc Lập Pháp (Law Parser) ---', delay: 6000, step: 'parser' },
+            { type: 'info', text: '🧬 LawParser: Đang bóc tách Chương, Điều, Khoản sử dụng biểu thức chính quy regex...', delay: 6400 },
+            { type: 'success', text: '✔ Đã trích xuất: Loại=NGHỊ ĐỊNH, Số hiệu=08/2026/NĐ-CP, Cơ quan=Chính phủ.', delay: 6900 },
+            { type: 'info', text: '--- BƯỚC 5: Phân Mảnh Tài Liệu (Document Chunking) ---', delay: 7400, step: 'chunker' },
+            { type: 'info', text: '✂️ Chunker: Đang chia nhỏ tài liệu thành các Điều độc lập...', delay: 7900 },
+            { type: 'success', text: '✔ Tạo ra 24 mảnh văn bản (chunks) độc lập, đã làm giàu siêu dữ liệu.', delay: 8400 },
+            { type: 'info', text: '--- BƯỚC 6: Sinh Biểu Diễn Nhúng (Embedding Model) ---', delay: 9000, step: 'embeddings' },
+            { type: 'info', text: '🧠 Embedding: Đang nạp mô hình fine-tuned BGE-M3 (1024d)...', delay: 9500 },
+            { type: 'info', text: '🧠 Embedding: Đang tính toán 24 vector biểu diễn nhúng, chuẩn hóa L2...', delay: 10100 },
+            { type: 'success', text: '✔ Tạo vector nhúng 1024 chiều thành công cho 24 chunks.', delay: 10600 },
+            { type: 'info', text: '--- BƯỚC 7: Cập Nhật Vector Store & Đẩy Vào Sản Xuất (Commit) ---', delay: 11100, step: 'faiss' },
+            { type: 'info', text: '📂 Tạo thư mục backup tự động: vector_data/backups/backup_20260531_1715...', delay: 11500 },
+            { type: 'info', text: '⚙️ Cập nhật index FAISS và bổ sung chunks mới vào metadata.json...', delay: 12000 },
+            { type: 'info', text: '🗂️ Tiến hành xây dựng lại chỉ mục tìm kiếm từ khóa BM25...', delay: 12500 },
+            { type: 'success', text: '✔ Kiểm tra tính nhất quán thành công: FAISS = 1540 vectors, metadata = 1540 phần tử.', delay: 13000 },
+            { type: 'success', text: '✨ PIPELINE HOÀN THÀNH XUẤT SẮC TRONG 12.8 GIÂY! ✨', delay: 13500 }
+        ];
+
+        const simulationLogsPhase2 = [
+            { type: 'info', text: '--- BẮT ĐẦU TRUY XUẤT HỖN HỢP RAG PIPELINE (LegalRetriever) ---', delay: 400, step: 'p2query' },
+            { type: 'success', text: '❓ Query: "Nghị định 303 quy định đối tượng tinh giản biên chế như thế nào?"', delay: 900 },
+            
+            // SPARSE PATH
+            { type: 'info', text: '📈 [Nhánh 1 - Tần Suất] Bắt đầu xử lý truy xuất từ khóa BM25...', delay: 1500, step: 'p2tok' },
+            { type: 'info', text: '📈 VN Tokenizer: Tách câu hỏi thành mảng các tokens...', delay: 2000 },
+            { type: 'success', text: '📈 VN Tokenizer: Đã trích xuất: [nghị, định, 303, quy, định, đối, tượng, tinh, giản, biên, chế]', delay: 2500 },
+            { type: 'info', text: '📈 BM25 Index: Đang quét điểm trùng khớp từ khóa trên bm25.pkl...', delay: 3000, step: 'p2bm25' },
+            { type: 'success', text: '📈 BM25 Index: Truy xuất thành công BM25_K = 100 ứng viên từ khóa trong 0.8ms.', delay: 3500 },
+
+            // DENSE PATH
+            { type: 'info', text: '🧠 [Nhánh 2 - Ngữ Nghĩa] Bắt đầu xử lý truy xuất vector nhúng...', delay: 4100, step: 'p2bi' },
+            { type: 'info', text: '🧠 Bi-Encoder: Nạp mô hình bi_bge_m3_ft và tính toán vector 1024d...', delay: 4600 },
+            { type: 'success', text: '🧠 Bi-Encoder: Tạo vector nhúng thành công [1, 1024] L2 Normalized.', delay: 5100 },
+            { type: 'info', text: '🧠 FAISS Index: Thực hiện quét độ tương đồng Cosine (Tích vô hướng)...', delay: 5700, step: 'p2faiss' },
+            { type: 'success', text: '🧠 FAISS Index: Truy xuất thành công DENSE_K = 100 ứng viên ngữ nghĩa trong 1.5ms.', delay: 6200 },
+
+            // FUSION AND RERANK
+            { type: 'info', text: '⚡ [Hợp Nhất Thứ Hạng] Thực hiện thuật toán Reciprocal Rank Fusion (RRF)...', delay: 6800, step: 'p2rrf' },
+            { type: 'attn', text: '⚡ RRF Merge: Chạy công thức RRF_Score(d) = ∑ 1 / (60 + rank_m(d)) trên 200 ứng viên...', delay: 7300 },
+            { type: 'success', text: '⚡ RRF Merge: Đã gộp và băm loại bỏ trùng lặp -> Giữ lại N = 100 candidates rank-fused.', delay: 7800 },
+            
+            // CROSS-ENCODER RERANK
+            { type: 'info', text: '🔄 [Tái Định Hạng] Nạp Cross-Encoder: outputs/models/ce_bge_reranker_ft_v6', delay: 8400, step: 'p2ce' },
+            { type: 'info', text: '🔄 Cross-Encoder: Chạy Self-Attention đa đầu trên 25 ứng viên hàng đầu (chế độ CPU)...', delay: 8900 },
+            { type: 'success', text: '🔄 Cross-Encoder: Đã chấm điểm tương quan chéo giữa câu hỏi và đoạn luật hoàn tất.', delay: 9400 },
+            { type: 'success', text: '✔ Đã chắt lọc thành công top K = 5 chunks tốt nhất (ce_score từ 8.42 xuống 5.12).', delay: 9900 },
+
+            // OUTPUT BUILD CONTEXT
+            { type: 'info', text: '🧬 Build Context: Gộp 5 chunks chất lượng cao làm sạch mã nguồn...', delay: 10400, step: 'p2context' },
+            { type: 'success', text: '🧬 Context: Đã trích nguồn trích dẫn: Nghị định 303/2026/NĐ-CP, Điều 4, Khoản 2, Trang 5.', delay: 10900 },
+            { type: 'success', text: '✨ TRUY XUẤT VÀ TÁI ĐỊNH HẠNG HOÀN THÀNH XUẤT SẮC TRONG 12.2 GIÂY! ✨', delay: 11400 }
+        ];
+
+        const simulationLogsPhase3 = [
+            { type: 'info', text: '--- BẮT ĐẦU PHA 3: KIỂM DUYỆT & LLM GENERATION ---', delay: 400, step: 'p3chunks' },
+            { type: 'info', text: '🧬 Context Builder: Khởi chạy khử trùng lặp và làm sạch 5 chunks...', delay: 1000, step: 'p3builder' },
+            { type: 'success', text: '🧬 Context: Khử trùng lặp thành công. Đóng gói context string: ~1800 từ thô.', delay: 1600 },
+            { type: 'info', text: '📝 Prompt Engine: Đang nhúng context vào SGU System Prompt chống ảo tưởng...', delay: 2200, step: 'p3prompt' },
+            { type: 'info', text: '🛡️ Gating Layer: Đang phân tích chỉ số Gating (Top-1 Score và Margin)...', delay: 2800, step: 'p3gating' },
+            { type: 'attn', text: '🛡️ Gating: Phát hiện Top-1 Score = 8.95 (vượt ngưỡng pass 3.0) | Margin = 1.25 (lớn).', delay: 3400 },
+            { type: 'success', text: '🛡️ Gating: Đưa ra quyết định: [PASS] -> Định tuyến sang Tier 1 (LOCAL LLM).', delay: 4000 },
+            { type: 'info', text: '🟢 local_qwen_llama: Tiến hành nạp mô hình local Llama-3-8B cục bộ...', delay: 4600, step: 'p3local' },
+            { type: 'info', text: '🤖 LLM Client: Bắt đầu gửi tải trọng Prompt tới local engine để xử lý...', delay: 5200, step: 'p3client' },
+            { type: 'info', text: '🤖 LLM Client: Đang sinh câu trả lời Tiếng Việt cục bộ (Thời gian dự kiến: 1.8s)...', delay: 6000 },
+            { type: 'success', text: '🤖 LLM Client: Đã tạo câu trả lời thô thành công. Bắt đầu truyền dữ liệu.', delay: 6700 },
+            { type: 'info', text: '🔬 Citation Validator: Tiến hành bóc tách các nhãn trích dẫn XML/markdown...', delay: 7300, step: 'p3validator' },
+            { type: 'info', text: '🔬 Validator: So khớp chéo nguồn luật dẫn chứng với metadata gốc...', delay: 7900 },
+            { type: 'success', text: '🔬 Validator: Kiểm tra chéo hoàn tất. Trích dẫn hợp lệ 100%. Không phát hiện Hallucination.', delay: 8500 },
+            { type: 'success', text: '✨ Final Response: Đã đóng gói câu trả lời Tiếng Việt hoàn chỉnh!', delay: 9100, step: 'p3output' },
+            { type: 'attn', text: '💬 Trả lời: "Theo Điều 4, Khoản 2 Nghị định 303/2026/NĐ-CP, đối tượng tinh giản biên chế gồm..."', delay: 9800 },
+            { type: 'success', text: '✨ PHA 3 ĐÃ HOÀN THÀNH XUẤT SẮC TRONG 9.5 GIÂY! ✨', delay: 10400 }
+        ];
+
+        let simulationTimeoutIds = [];
+
+        function appendLogLine(type, text) {
+            const line = document.createElement('div');
+            line.className = `log-line log-${type}`;
+            line.innerHTML = `&gt; [${new Date().toLocaleTimeString()}] ${text}`;
+            consoleStream.appendChild(line);
+            consoleStream.scrollTop = consoleStream.scrollHeight;
+        }
+
+        function runSimulation() {
+            // Reset and Stop existing simulation
+            stopSimulation();
+            consoleStream.innerHTML = '';
+            
+            statChunks.innerText = '—';
+            statDims.innerText = '—';
+            statTotal.innerText = '—';
+
+            const activeLogs = (activePhase === 1) ? simulationLogsPhase1 : (activePhase === 2) ? simulationLogsPhase2 : simulationLogsPhase3;
+
+            // Start simulation chain
+            activeLogs.forEach(log => {
+                const timeoutId = setTimeout(() => {
+                    appendLogLine(log.type, log.text);
+                    
+                    // Activate corresponding node in UI
+                    if (log.step) {
+                        showDetails(log.step, activePhase);
+                    }
+
+                    // Update UI stats on step completions
+                    if (activePhase === 1) {
+                        if (log.text.includes('24 mảnh văn bản')) {
+                            statChunks.innerText = '24';
+                        }
+                        if (log.text.includes('1024 chiều')) {
+                            statDims.innerText = '1024d';
+                        }
+                        if (log.text.includes('FAISS = 1540 vectors')) {
+                            statTotal.innerText = '1,540';
+                        }
+                    } else if (activePhase === 2) {
+                        if (log.text.includes('BM25_K = 100 ứng viên')) {
+                            statChunks.innerText = '100 / 100';
+                        }
+                        if (log.text.includes('top K = 5 chunks')) {
+                            statDims.innerText = '5 Chunks';
+                        }
+                        if (log.text.includes('RRF Merge')) {
+                            statTotal.innerText = 'k = 60';
+                        }
+                    } else {
+                        if (log.text.includes('Định tuyến sang Tier 1')) {
+                            statChunks.innerText = 'T1-LOCAL';
+                        }
+                        if (log.text.includes('Margin = 1.25')) {
+                            statDims.innerText = 'Pass (8.95)';
+                        }
+                        if (log.text.includes('Trích dẫn hợp lệ')) {
+                            statTotal.innerText = '100% Valid';
+                        }
+                    }
+                }, log.delay);
+                simulationTimeoutIds.push(timeoutId);
+            });
+        }
+
+        function stopSimulation() {
+            simulationTimeoutIds.forEach(id => clearTimeout(id));
+            simulationTimeoutIds = [];
+        }
+
+        function clearConsole() {
+            const defaultText = (activePhase === 1) 
+                ? 'Hệ thống sẵn sàng. Vui lòng bấm "Chạy Giả Lập" để bắt đầu quy trình Ingestion.'
+                : (activePhase === 2)
+                ? 'Hệ thống sẵn sàng. Vui lòng bấm "Chạy Giả Lập" để bắt đầu quy trình truy xuất RAG.'
+                : 'Hệ thống sẵn sàng. Vui lòng bấm "Chạy Giả Lập" để bắt đầu kiểm duyệt & gọi LLM.';
+            consoleStream.innerHTML = `<div class="log-line text-gray-500">${defaultText}</div>`;
+            statChunks.innerText = '—';
+            statDims.innerText = '—';
+            statTotal.innerText = '—';
+            
+            // Remove active classes
+            document.querySelectorAll('.node-card').forEach(node => {
+                node.classList.remove('active-node');
+            });
+            detailCardViewport.innerHTML = `
+                <div class="detail-placeholder">
+                    <span>💡</span>
+                    <h3>Bấm vào bất kỳ thành phần nào trong sơ đồ</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; max-width: 280px;">Để hiển thị chi tiết nghiệp vụ, cấu trúc dữ liệu đầu vào/đầu ra và mã nguồn tương ứng.</p>
+                </div>
+            `;
+        }
+
+        runSimulationBtn.addEventListener('click', runSimulation);
+        clearConsoleBtn.addEventListener('click', () => {
+            stopSimulation();
+            clearConsole();
+        });
+    </script>
+</body>
+</html>

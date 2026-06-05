@@ -1,0 +1,17 @@
+﻿Version,Step,Retrieval Mode,Recall@1,Recall@3,Recall@5,MRR@10,Version Step,Recall@1 vs V1 (pp),Recall@1 step lift (pp),Recall@3 vs V1 (pp),Recall@3 step lift (pp),Recall@5 vs V1 (pp),Recall@5 step lift (pp),MRR@10 vs V1 (pp),MRR@10 step lift (pp)
+V1,Lexical baseline,BM25 Okapi thô,0.2842,0.4158,0.4825,0.3428,"V1
+Lexical baseline",0.0,,0.0,,0.0,,0.0,
+V2.1,Dense PhoBERT,PhoBERT Bi-Encoder thô,0.0825,0.1246,0.1584,0.0963,"V2.1
+Dense PhoBERT",-20.17,-20.17,-29.12,-29.12,-32.41,-32.41,-24.65,-24.65
+V2.2,Dense Legal HF,Vietnam-Legal-HF thô,0.3263,0.4851,0.5526,0.3947,"V2.2
+Dense Legal HF",4.21,24.38,6.93,36.05,7.01,39.42,5.19,29.84
+V2.3,Dense BGE-M3,BGE-M3 Multilingual thô,0.4158,0.6025,0.6807,0.4891,"V2.3
+Dense BGE-M3",13.16,8.95,18.67,11.74,19.82,12.81,14.63,9.44
+V3,Off-shelf CE rerank,BGE-M3 + Cross-Encoder rerank,0.4912,0.6842,0.7246,0.5842,"V3
+Off-shelf CE rerank",20.7,7.54,26.84,8.17,24.21,4.39,24.14,9.51
+V4,FT Bi-Encoder,Fine-tuned Bi-Encoder bi_bge_m3_ft,0.5246,0.7298,0.7825,0.6218,"V4
+FT Bi-Encoder",24.04,3.34,31.4,4.56,30.0,5.79,27.9,3.76
+V5,FT Bi + FT CE,FT Bi-Encoder + FT Cross-Encoder,0.5912,0.786,0.8211,0.6825,"V5
+FT Bi + FT CE",30.7,6.66,37.02,5.62,33.86,3.86,33.97,6.07
+V6,Hybrid RAG + RRF + FT CE,BM25 + FT Bi-Encoder + RRF + FT CE rerank,0.6368,0.8158,0.8544,0.7282,"V6
+Hybrid RAG + RRF + FT CE",35.26,4.56,40.0,2.98,37.19,3.33,38.54,4.57

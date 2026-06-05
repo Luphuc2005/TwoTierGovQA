@@ -1,0 +1,84 @@
+# =============================================================
+# Legal Chatbot RAG — Docker Compose
+# =============================================================
+# Yêu cầu:
+#   - Docker Desktop >= 24.x
+#   - vector_data/production/ đã có index.faiss, metadata.json, bm25.pkl
+#     (xem README.md → Phần "Chuẩn bị dữ liệu vector")
+#
+# Cách chạy:
+#   1. cp .env.example .env  (điền GEMINI_API_KEY hoặc OPENAI_API_KEY)
+#   2. docker compose up --build -d
+#   3. Truy cập: http://localhost:3000
+# =============================================================
+
+services:
+
+  # ── PostgreSQL ────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: legal_chatbot
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ─────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (FastAPI + RAG) ───────────────────────────────────
+  backend:
+    build:
+      context: ./AI-Powered-Q-A-Assistant-for-Vietnam-s-Two-Tier-Local-Government-System/backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # Override database/redis to use Docker internal hostnames
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/legal_chatbot
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      # Mount vector index (read-only — rebuild from host, not inside container)
+      - ./vector_data:/app/vector_data:ro
+      # Mount ChatBot engine code so backend can import it
+      - ./ChatBot:/app/ChatBot:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Frontend (React → Nginx) ──────────────────────────────────
+  frontend:
+    build:
+      context: ./AI-Powered-Q-A-Assistant-for-Vietnam-s-Two-Tier-Local-Government-System/frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

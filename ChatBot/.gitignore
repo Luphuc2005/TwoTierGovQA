@@ -1,0 +1,104 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.env
+*rag_env/
+# Environment Variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Output Directories
+output_pipeline*/
+output_pipeline_*/
+temp_*/
+test_*/
+Data/output_*/
+Data/test_*/
+processed_output/
+processed_json/
+
+# Large Data Files - Models & Embeddings
+*.pt
+*.pth
+*.bin
+*.ckpt
+*.h5
+*.pkl
+*.pickle
+*.index
+*.faiss
+*.safetensors
+
+# Large Data Files - PDFs & Documents
+*.pdf
+Data/**/*.pdf
+downloads/**/*.pdf
+
+# Large Data Files - Images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+
+# JSON Output Files (keep only essential ones)
+*_processed.json
+*_chunks.json
+*_normalized.json
+*_ocr.json
+*_parsed.json
+*_final.json
+chunks_*.json
+
+# Logs
+*.log
+logs/
+*.err
+
+# Temporary Files
+temp_ocr.json
+*.tmp
+*.cache
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Node modules (if any)
+node_modules/
+
+# Test files
+test_output*/
+
+rag_env*/

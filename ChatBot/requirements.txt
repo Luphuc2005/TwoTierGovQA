@@ -1,0 +1,51 @@
+# =============================================================
+# ChatBot Engine — Python dependencies
+# =============================================================
+# Cài đặt trong môi trường riêng (conda hoặc venv):
+#   conda create -n ChatBot python=3.11
+#   conda activate ChatBot
+#   pip install -r requirements.txt
+#
+# Môi trường này cần cho:
+#   - Ingestion pipeline (OCR + parse + embed)
+#   - RAG pipeline (retrieval + rerank + generation)
+# =============================================================
+
+# ── Core ──────────────────────────────────────────────────────
+numpy>=1.24.0
+scipy>=1.10.1
+pandas>=2.0.0
+scikit-learn>=1.3.0
+pillow>=10.2.0
+tqdm>=4.66.0
+
+# ── OCR & Document Processing ─────────────────────────────────
+# pdfplumber: đọc PDF có text số (không cần OCR)
+pdfplumber>=0.10.0
+# pdf2image: chuyển PDF thành ảnh để OCR
+pdf2image>=1.16.0
+# PaddleOCR: OCR cho file quét (cần cài PaddlePaddle riêng)
+# pip install paddlepaddle (CPU) hoặc paddlepaddle-gpu (GPU)
+paddleocr>=2.7.0
+# VietOCR: OCR tiếng Việt chuyên biệt (tuỳ chọn, fallback)
+vietocr>=0.3.9
+# OpenCV
+opencv-python>=4.8.0
+
+# ── Vector Search & Retrieval ─────────────────────────────────
+faiss-cpu>=1.7.4           # hoặc faiss-gpu nếu có CUDA
+rank-bm25>=0.2.2
+sentence-transformers>=2.5.0
+transformers>=4.40.0
+accelerate>=0.27.0
+huggingface-hub>=0.22.0
+
+# ── LLM (local & API) ─────────────────────────────────────────
+torch>=2.1.0               # cài phiên bản CUDA phù hợp nếu dùng GPU
+# Hướng dẫn cài torch CUDA: https://pytorch.org/get-started/locally/
+openai>=1.10.0
+google-generativeai>=0.7.0
+
+# ── Utilities ─────────────────────────────────────────────────
+python-dotenv>=1.0.0
+loguru>=0.7.2
