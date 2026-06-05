@@ -435,5 +435,3 @@ curl -X POST http://localhost:8080/api/chat \
 ## 📄 License
 
 MIT License — xem [LICENSE](LICENSE) để biết thêm chi tiết.
-#   T w o T i e r G o v Q A  
- 
