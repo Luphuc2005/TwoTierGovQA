@@ -1,0 +1,154 @@
+================================================================================
+           BÁO CÁO PHÂN TÍCH CHI TIẾT CÁC THƯ MỤC TRONG DỰ ÁN TwoTierGovQA
+================================================================================
+
+Báo cáo này mô tả chi tiết kiến trúc, cấu trúc tệp tin, luồng xử lý và cách tiếp cận công nghệ
+của hai thư mục cốt lõi trong dự án TwoTierGovQA.
+
+================================================================================
+PHẦN I: THƯ MỤC "AI-Powered-Q-A-Assistant-for-Vietnam-s-Two-Tier-Local-Government-System"
+================================================================================
+Thư mục này quản lý toàn bộ hệ thống web ứng dụng (Full-stack Web Application), đóng vai trò giao tiếp
+với người dùng và điều phối các tác vụ hỏi đáp/nạp tài liệu thông qua API.
+
+--------------------------------------------------------------------------------
+1.1. Thư mục con "backend/" (FastAPI API Service)
+--------------------------------------------------------------------------------
+Được xây dựng bằng FastAPI, backend chịu trách nhiệm định tuyến (routing), xử lý đăng nhập,
+lịch sử hội thoại, lưu trữ tệp tin tải lên và giao tiếp trực tiếp với ChatBot Engine.
+
+Các tệp tin cấu hình và quản trị cơ sở dữ liệu (Database & Config):
+* app/config.py: 
+  - Đọc và xác thực các biến môi trường từ file `.env` bằng thư viện `pydantic-settings`.
+  - Các tham số gồm: URL cơ sở dữ liệu (PostgreSQL), API keys (Gemini, OpenAI), JWT Secret Key, 
+    đường dẫn Python thực thi (`INGEST_PYTHON_EXE`), và cấu hình CORS.
+* app/database.py:
+  - Khởi tạo kết nối SQLAlchemy Engine đến cơ sở dữ liệu.
+  - Cung cấp generator `get_db()` để quản lý phiên kết nối (session lifecycle) trong API.
+* app/models.py:
+  - Định nghĩa lược đồ cơ sở dữ liệu (database schemas) qua SQLAlchemy:
+    + Lớp `User`: Lưu thông tin tài khoản (id, email, hashed_password, created_at).
+    + Lớp `Conversation`: Lưu các chuỗi hội thoại (id, title, user_id, created_at, messages).
+    + Lớp `Message`: Lưu từng lượt chat (id, conversation_id, role [user/assistant], content, 
+      retrieval_context [JSON chi tiết các văn bản được trích dẫn], created_at).
+* app/crud.py:
+  - Chứa các hàm truy vấn DB (Create, Read, Update, Delete) cho User, Conversation và Message.
+* app/middleware.py:
+  - `RequestLoggingMiddleware`: Ghi log chi tiết thời gian xử lý và thông tin của từng request API.
+  - `RateLimitMiddleware`: Giới hạn tần suất gửi request để bảo vệ hệ thống tránh bị spam API.
+
+Các router chức năng (app/routers/):
+* auth.py:
+  - Cung cấp API `/api/auth/register` (đăng ký kèm mã hóa mật mã bằng bcrypt).
+  - Cung cấp API `/api/auth/login` (đăng nhập, xác thực và cấp mã JWT token có thời hạn).
+  - `get_current_user()` hoạt động như một Dependency để bảo vệ các API yêu cầu đăng nhập.
+* conversation.py:
+  - Quản lý danh sách hội thoại của từng người dùng (`/api/conversations`).
+  - Cho phép tạo mới, xóa hoặc truy xuất chi tiết lịch sử chat của một hội thoại cụ thể.
+* chat.py:
+  - Cung cấp API `/api/chat` nhận câu hỏi của người dùng và `conversation_id`.
+  - Kiểm tra lịch sử để tự động viết lại câu hỏi tiếp nối nếu người dùng hỏi ngắn (context-dependent query).
+  - Gọi hàm `generate_response()` từ `rag_service.py` để xử lý RAG.
+  - Lưu trữ câu hỏi, câu trả lời kèm thông tin trích dẫn ngữ cảnh (retrieval_context) vào DB.
+* upload.py:
+  - Phụ trách luồng tải lên và nạp tài liệu pháp lý mới.
+  - API `/api/upload-document`: Lưu tệp PDF tải lên vào thư mục `data/uploads/` và băm SHA-256 để tạo `doc_id` duy nhất chống trùng lặp.
+  - API `/api/upload-document/{doc_id}/stream`: Sử dụng cơ chế Server-Sent Events (SSE - StreamingResponse) để chạy ngầm script `scripts/ingest_new_pdf.py` qua `subprocess.Popen`. Nó liên tục đọc luồng xuất (stdout) của script và gửi tiến trình trực tiếp về Frontend theo các bước (Step 1 -> Step 5).
+
+Cầu nối dịch vụ AI (app/rag_service.py):
+* Đóng vai trò là Singleton Wrapper để tải và lưu trữ đối tượng `GenerationPipeline` của ChatBot trong bộ nhớ RAM, tránh việc tải đi tải lại các mô hình AI lớn.
+* Tự động kiểm tra cấu hình GPU VRAM: Nếu phát hiện GPU có VRAM >= 3.5GB, hệ thống tự động tải Bi-Encoder và Cross-Encoder lên CUDA để tăng tốc.
+* Thiết lập cơ chế Local Fallback: Nếu GPU đủ VRAM và đang cấu hình dùng API chính (Gemini/OpenAI), hệ thống sẽ tải sẵn một model Qwen3 nhỏ (0.6B) làm fallback local. Khi API gặp lỗi giới hạn lượt dùng hoặc mất mạng, hệ thống tự động định tuyến sang model local để phản hồi.
+* Tích hợp bộ lọc nhanh câu hỏi ngoài phạm vi (`_is_obvious_out_of_scope`): Kiểm tra nếu câu hỏi không chứa từ khóa pháp lý hoặc chứa các từ khóa phi pháp lý rõ ràng, hệ thống sẽ từ chối ngay lập tức mà không gọi mô hình AI.
+
+--------------------------------------------------------------------------------
+1.2. Thư mục con "frontend/" (React Giao Diện Người Dùng)
+--------------------------------------------------------------------------------
+Ứng dụng khách SPA (Single Page Application) giúp người dùng tương tác trực quan với hệ thống.
+
+* src/pages/ChatPage.jsx: Giao diện làm việc chính, chứa sidebar quản lý hội thoại, khung chat chính và bảng thông tin trích dẫn chi tiết.
+* src/components/ChatWindow.jsx: Hiển thị danh sách tin nhắn. Hỗ trợ hiển thị Markdown đẹp mắt, định dạng lại các thẻ trích dẫn nguồn luật `[dieu_x_khoan_y]`.
+* src/components/RetrievalPanel.jsx: Khi nhấn vào một tin nhắn, bảng này sẽ hiện ra ở bên phải, hiển thị chi tiết các văn bản luật mà chatbot đã tìm kiếm, kèm điểm tương quan ngữ nghĩa (Cross-Encoder score) và điểm tìm kiếm vector (Dense score).
+* src/components/UploadModal.jsx & ProcessingModal.jsx: Hộp thoại tải lên tệp PDF. Khi tệp đang được xử lý, ProcessingModal sẽ hiển thị một thanh tiến độ động (progress bar) được cập nhật liên tục qua kết nối SSE của backend, hiển thị chi tiết tiến trình (đang chạy OCR, đang phân tích cấu trúc, đang embed...).
+
+================================================================================
+PHẦN II: THƯ MỤC "ChatBot" (AI Core Engine)
+================================================================================
+Đây là trái tim thuật toán của dự án, chịu trách nhiệm xử lý ngôn ngữ tự nhiên từ việc đọc, 
+phân tích cấu trúc văn bản pháp luật đến việc tìm kiếm ngữ nghĩa và suy luận câu trả lời.
+
+--------------------------------------------------------------------------------
+2.1. Thư mục con "generation/" (RAG Pipeline & Gating)
+--------------------------------------------------------------------------------
+* config.py: Chứa các tham số hoạt động của pipeline RAG:
+  - Cấu hình API key, Model name (`gemini-2.5-flash`, `gpt-4o-mini`, `qwen3`...).
+  - Ngưỡng gating (`threshold_pass = 2.0`, `threshold_abstain = 0.5`).
+  - Cấu hình tối ưu hóa truy xuất (`ENABLE_CONDITIONAL_RERANK = True`, `RETRIEVAL_CACHE_MAX_SIZE = 128`).
+* retrieval_rerank.py (Module truy xuất thông tin hai vòng):
+  - Chạy song song đa luồng (Multi-threading) bằng `ThreadPoolExecutor`:
+    + Nhánh 1: Tìm kiếm từ khóa bằng `BM25Okapi` trên file index `bm25.pkl`.
+    + Nhánh 2: Tìm kiếm ngữ nghĩa bằng Bi-Encoder (BGE-M3) so khớp khoảng cách Cosine trên chỉ mục `index.faiss`.
+  - Kết hợp kết quả bằng thuật toán RRF (Reciprocal Rank Fusion) để ra danh sách ứng viên tốt nhất.
+  - Xếp hạng lại (Reranking): Sử dụng Cross-Encoder để đánh giá chi tiết độ tương đồng ngữ nghĩa của từng cặp câu hỏi - đoạn luật.
+  - Cơ chế Bỏ qua Rerank (Conditional Reranking Skip): Nếu kết quả tìm kiếm vòng 1 đã rất chắc chắn (điểm số FAISS và RRF vượt ngưỡng an toàn cao), hệ thống sẽ tự động bỏ qua Cross-Encoder để tiết kiệm tài nguyên GPU và thời gian xử lý.
+  - Cache kết quả truy xuất: Sử dụng một OrderedDict làm bộ nhớ đệm LRU Cache lưu trữ kết quả tìm kiếm dựa trên câu hỏi đã chuẩn hóa.
+* gating.py (Bộ định tuyến & Kiểm soát chất lượng câu trả lời):
+  - Thực hiện kiểm tra chất lượng tìm kiếm trước khi gọi LLM:
+    + Nếu điểm số cao nhất của văn bản tìm được dưới `threshold_abstain` -> Quyết định `ABSTAIN` (từ chối trả lời vì không có căn cứ).
+    + Nếu khoảng cách điểm số giữa văn bản số 1 và số 2 quá nhỏ (Margin thấp) -> Quyết định `ASK_BACK` (hỏi lại người dùng để làm rõ câu hỏi bị mơ hồ).
+    + Tính toán độ phủ từ vựng (Lexical Overlap) giữa câu hỏi và văn bản luật để phát hiện tình huống sai lệch ngữ cảnh (domain mismatch).
+    + Phân loại câu hỏi thành các nhóm nghiệp vụ (thẩm quyền, thủ tục hành chính, tổ chức chính quyền...).
+  - Định tuyến mô hình (Two-Tier Routing):
+    + Nếu điểm số văn bản rất cao và rõ ràng -> Gán nhãn `LLMTier.LOCAL` để dùng mô hình miễn phí nội bộ trả lời.
+    + Nếu điểm số nằm ở ngưỡng trung bình hoặc cần suy luận nhiều hơn -> Gán nhãn `LLMTier.API` để dùng Gemini/GPT.
+* context_builder.py:
+  - Xây dựng prompt chất lượng cao cho LLM.
+  - Lọc bỏ các chunk văn bản trùng lặp nội dung.
+  - Định dạng các nguồn luật trích dẫn thành cấu trúc rõ ràng để mô hình AI dễ đọc và trích dẫn ngược lại.
+* llm_client.py:
+  - Lớp adapter trừu tượng hóa việc giao tiếp với nhiều API và mô hình local khác nhau.
+  - Xử lý việc gọi API Gemini, OpenAI, OpenRouter hoặc Huggingface Transformers local.
+  - Tích hợp cơ chế tự động chuyển vùng khi lỗi (automatic failover/fallback).
+
+--------------------------------------------------------------------------------
+2.2. Thư mục con "xldl/" (Data Ingestion & Parser)
+--------------------------------------------------------------------------------
+Thư mục này chịu trách nhiệm chuẩn bị dữ liệu, chuyển đổi các file PDF thô thành cơ sở dữ liệu vector.
+
+* legal_parser.py (Bộ phân tích cấu trúc luật chuyên sâu):
+  - Sử dụng các biểu thức chính quy (Regex) tiếng Việt được tinh chỉnh để nhận diện cấu trúc phân cấp: Chương, Mục, Điều, Khoản, Điểm.
+  - Hỗ trợ sửa lỗi chính tả phổ biến do quét OCR sai (Ví dụ: "Điều" thành "Diu", "Diều", "Biều", "Dieu").
+  - Cơ chế Chống nhận diện nhầm trích dẫn (Anti-Citation Logic): Kiểm tra xem chữ "Chương III" hay "Điều 5" có phải là tiêu đề thật sự hay chỉ là trích dẫn (ví dụ: "...theo quy định tại Chương III Luật Hộ tịch..."). Nếu là trích dẫn, nó sẽ bỏ qua không cắt chương mới.
+  - Phân tích và tách các Điểm viết liền dòng (inline split) bằng ký hiệu chấm phẩy/dấu ngoặc đơn (a), b), c)...).
+* OCR_paddle_protonX.py:
+  - Sử dụng thư viện `PaddleOCR` (mô hình học máy quét ảnh chữ cực mạnh) kết hợp `pdf2image` để chuyển đổi các trang PDF scan dạng ảnh sang định dạng văn bản số hóa.
+* chunks.py:
+  - Gom các phần nội dung đã phân tách thành các đoạn chunk pháp lý hoàn chỉnh.
+  - Gắn nhãn metadata chi tiết (Chương số, Điều số, Khoản số, Điểm ký hiệu, và tên văn bản tương ứng) vào từng chunk dữ liệu.
+* encode_legal_hf.py:
+  - Sử dụng mô hình `BGE-M3` (mô hình nhúng đa ngôn ngữ hiệu năng cao) để biến đổi các chunk văn bản pháp luật thành các vector 1024 chiều biểu diễn ngữ nghĩa của đoạn luật đó.
+
+--------------------------------------------------------------------------------
+2.3. Thư mục con "cross-encoder/outputs/models/" (Fine-tuned Models)
+--------------------------------------------------------------------------------
+Chứa các trọng số mô hình cục bộ đã được tinh chỉnh (fine-tuned) trên tập dữ liệu luật tổ chức chính quyền Việt Nam để đạt độ chính xác tối đa:
+* bi_bge_m3_ft/: Mô hình Bi-Encoder dùng để sinh vector nhúng cho FAISS.
+* ce_bge_reranker_ft_v6/: Mô hình Cross-Encoder dùng để xếp hạng lại sự tương đồng câu hỏi và câu trả lời.
+
+================================================================================
+PHẦN III: QUY TRÌNH NẠP PDF MỚI (Thư mục "scripts/")
+================================================================================
+Thư mục `scripts/` chứa công cụ quản trị dữ liệu chính là `ingest_new_pdf.py`, quy trình nạp tài liệu
+mới bao gồm 7 bước được bảo vệ nghiêm ngặt:
+
+1. Validate PDF: Kiểm tra tính toàn vẹn của tệp PDF (kích thước, định dạng tệp) và tính mã băm SHA-256 để so sánh trùng lặp với hệ thống hiện tại.
+2. Trích xuất văn bản (Text Extraction): Ưu tiên trích xuất text số hóa trực tiếp bằng `pdfplumber`. Nếu thất bại (PDF scan), hệ thống chuyển hướng tự động qua pipeline `PaddleOCR`.
+3. Làm sạch và gộp văn bản (Merge & Clean): Gộp văn bản từ các trang, lọc bỏ các dòng rác metadata của trình ký số, số trang độc lập, và chuẩn hóa khoảng trắng.
+4. Phân tích cấu trúc pháp luật: Chuyển toàn bộ văn bản thô qua `LawParser` để bóc tách cây cấu trúc JSON (Chương -> Điều -> Khoản -> Điểm).
+5. Phân đoạn dữ liệu (Chunking): Chia cấu trúc JSON thành các đoạn văn bản độc lập đại diện cho từng điều khoản pháp luật, làm giàu thông tin metadata của nguồn luật (số hiệu văn bản, loại văn bản, cơ quan ban hành, ngày ban hành).
+6. Tạo Vector (Embedding): Chuyển đổi các chunk pháp lý thành vector nhúng 1024 chiều bằng mô hình BGE-M3 fine-tuned.
+7. Ghi nhận dữ liệu (Commit): 
+   - Sao lưu dữ liệu hiện tại của hệ thống (`index.faiss`, `metadata.json`, `bm25.pkl`) vào thư mục `vector_data/backups/`.
+   - Ghi đè vector mới vào FAISS, cập nhật metadata mới.
+   - Biên dịch lại chỉ mục BM25 từ khoá.
+   - Xác thực tính nhất quán số lượng bản ghi (FAISS count == Metadata count == BM25 size). Nếu khớp mới chính thức thay thế file sản xuất (Commit). Nếu xảy ra lỗi bất kỳ ở bước này, toàn bộ hệ thống sẽ tự động khôi phục về phiên bản sao lưu trước đó (Rollback).

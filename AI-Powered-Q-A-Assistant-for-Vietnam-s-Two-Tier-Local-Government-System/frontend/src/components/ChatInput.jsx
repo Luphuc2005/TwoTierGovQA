@@ -25,16 +25,16 @@ export default function ChatInput({ onSend, disabled, onOpenUpload }) {
     const hasContent = message.trim().length > 0;
 
     return (
-        <div className="bg-white border-t border-bdr px-4 py-4">
-            <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-                <div className="flex items-center gap-2.5">
+        <div className="bg-white border-t border-bdr px-3 py-3 sm:px-4">
+            <form onSubmit={handleSubmit} className="mx-auto w-full max-w-4xl">
+                <div className="grid grid-cols-[48px_minmax(0,1fr)_48px] items-center gap-2.5 sm:gap-3">
                     {/* Upload button */}
                     <button
                         type="button"
                         onClick={onOpenUpload}
                         disabled={disabled}
                         id="btn-upload"
-                        className="group flex h-11 w-11 items-center justify-center rounded-xl
+                        className="group flex h-12 w-12 shrink-0 items-center justify-center rounded-xl
                          border border-bdr-medium bg-white text-txt-label
                          shadow-card transition-smooth flex-shrink-0
                          hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50
@@ -52,7 +52,7 @@ export default function ChatInput({ onSend, disabled, onOpenUpload }) {
                     </button>
 
                     {/* Input area */}
-                    <div className="flex-1 relative">
+                    <div className="relative min-w-0">
                         <textarea
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
@@ -61,18 +61,12 @@ export default function ChatInput({ onSend, disabled, onOpenUpload }) {
                             disabled={disabled}
                             rows={1}
                             id="chat-input"
-                            className="w-full resize-none rounded-xl border border-bdr-medium bg-white
-                             px-4 py-3.5 text-txt-primary text-[15px]
+                            className="block h-12 max-h-12 min-h-12 w-full resize-none rounded-xl border border-bdr-medium bg-white
+                             px-4 py-3 text-txt-primary text-[15px] leading-6
                              placeholder-txt-muted shadow-input
                              focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400
                              disabled:opacity-50 disabled:cursor-not-allowed
-                             max-h-48 overflow-y-auto transition-smooth"
-                            style={{ minHeight: "52px" }}
-                            onInput={(e) => {
-                                e.target.style.height = "52px";
-                                e.target.style.height =
-                                    Math.min(e.target.scrollHeight, 192) + "px";
-                            }}
+                             overflow-y-auto transition-smooth"
                         />
                     </div>
 
@@ -81,7 +75,7 @@ export default function ChatInput({ onSend, disabled, onOpenUpload }) {
                         type="submit"
                         disabled={disabled || !hasContent}
                         id="btn-send"
-                        className={`flex h-11 w-11 items-center justify-center rounded-xl flex-shrink-0
+                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl
                          transition-smooth focus:outline-none focus:ring-2 focus:ring-primary-400
                          ${hasContent && !disabled
                             ? "bg-primary-600 text-white shadow-md hover:bg-primary-700 hover:shadow-lg active:scale-95"

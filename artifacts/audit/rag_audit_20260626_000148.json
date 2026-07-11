@@ -1,0 +1,116 @@
+{
+  "created_at": "20260626_000148",
+  "python": "3.10.19 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 16:41:31) [MSC v.1929 64 bit (AMD64)]",
+  "root_dir": "D:\\GitHub\\Folder cha - Copy",
+  "vector_store": {
+    "paths": {
+      "metadata": "D:\\GitHub\\Folder cha - Copy\\vector_data\\production\\metadata.json",
+      "faiss": "D:\\GitHub\\Folder cha - Copy\\vector_data\\production\\index.faiss",
+      "bm25": "D:\\GitHub\\Folder cha - Copy\\vector_data\\production\\bm25.pkl"
+    },
+    "faiss_ntotal": 2061,
+    "faiss_dim": 1024,
+    "metadata_count": 2061,
+    "bm25_corpus_count": 2061,
+    "count_consistent": true,
+    "empty_text_chunks": 0,
+    "short_chunks_lt_50": 1,
+    "long_chunks_gt_3000": 1,
+    "length_min": 33,
+    "length_max": 7753,
+    "length_avg": 478.7,
+    "duplicate_text_pairs_first500": 86,
+    "empty_metadata": 0,
+    "missing_fields": {
+      "van_ban": 4,
+      "dieu": 4,
+      "khoan": 175,
+      "diem": 1611,
+      "chuong": 4,
+      "doc_id": 1826,
+      "file_sha256": 1826,
+      "file_name": 1826,
+      "source_pdf": 1826,
+      "page_start": 2061,
+      "page_end": 2061
+    },
+    "noise_markers": {
+      "�": 0,
+      "□": 0,
+      "@@@": 0
+    },
+    "weird_char_chunks": 0,
+    "doc_id_counts_top10": [
+      [
+        "",
+        1826
+      ],
+      [
+        "doc_c0ed626647a24a5c",
+        187
+      ],
+      [
+        "doc_36e524d2e73f4758",
+        30
+      ],
+      [
+        "doc_db7d4963de2bb467",
+        18
+      ]
+    ],
+    "document_name_top10": [
+      [
+        "NGHỊ ĐỊNH Quy định phân định thẩm quyền của chính quyền địa phương 02 cấp trong lĩnh vực quản lý nhà nước của Bộ Nông nghiệp và Môi trường",
+        373
+      ],
+      [
+        "NGHỊ ĐỊNH Quy định về phân quyền, phân cấp trong lĩnh vực Gi3: ĐẾN quản lý nhà nước của Bộ Khoa học và Công nghệ Ngày 45161.2025",
+        169
+      ],
+      [
+        "NGHỊ ĐỊNH Quy định về phân định thẩm quyền của chính quyền địa phương cổng thông tin điện tử chính phủ 192 cấp trong lĩnh vực quản lý nhà nước của Bộ Xây dựng ĐẾN Ngày. 13.1.67.2025",
+        168
+      ],
+      [
+        "NGHỊ ĐỊNH \"Quy định về phân định thẩm quyền của chính quyền địa phương 02 cấp trong lĩnh vực quản lý nhà nước của Bộ Nội vụ",
+        164
+      ],
+      [
+        "NGHỊ ĐỊNH Quy định về phân định thẩm quyền của chính quyền địa phương 02 cấp trong lĩnh vực quản lý nhà nước của bộ tài chính -",
+        150
+      ],
+      [
+        "NGHỊ ĐỊNH Quy định tổ chức các cơ quan chuyên môn thuộc Ủy ban nhân dân tỉnh, thành phố trực thuộc trung ương và Ủy ban nhân dân xã, phường, đặc khu thuộc tỉnh, thành phố trực thuộc trung ương G13:.. ĐẾN - Căn cứ Luật Tổ chức Chính phủ năm 2025;",
+        133
+      ],
+      [
+        "NGHỊ ĐỊNH Quy định về phân định thẩm quyền của chính quyền địa phương 02 cấp trong lĩnh vực quản lý nhà nước của Bộ Y tế",
+        111
+      ],
+      [
+        "NGHỊ ĐỊNH Quy định về phân quyền, phân cấp trong quản lý nhà nước lĩnh vực nội vụ",
+        89
+      ],
+      [
+        "NGHỊ ĐỊNH Quy định về phân quyền, phân cấp Cử Ngày 13.16.12025 trong lĩnh vực quản lý nhà nước của Bộ Tư pháp",
+        83
+      ],
+      [
+        "NGHỊ ĐỊNH Ngày.13.1.6.2025 Quy định về phân quyền, phân cấp; phân định thẩm quyền của chính quyền địa phương 02 cấp trong lĩnh vực công tác dân tộc, tín ngưỡng, tôn giáo - Căn cứ Luật Tổ chức Chính phủ năm 2025;",
+        82
+      ]
+    ],
+    "sample_first": {
+      "metadata": {
+        "chunk_index": 19,
+        "van_ban": "NGHỊ ĐỊNH Quy định về phân định thẩm quyền của chính quyền địa phương 02 cấp trong lĩnh vực quản lý nhà nước của Bộ Tư pháp",
+        "chuong": "II",
+        "dieu": "10",
+        "khoan": "1",
+        "diem": null
+      },
+      "text_preview": "Khoản 1 Điều 10 NGHỊ ĐỊNH Quy định về phân định thẩm quyền của chính quyền địa phương 02 cấp trong lĩnh vực quản lý nhà nước của Bộ Tư pháp Ủy ban nhân dân cấp xã định kỳ 06 tháng rà soát, đánh giá việc trẻ em cần được nhận làm con nuôi, nếu không có công dân Việt Nam thường trú ở trong nước nhận trẻ em làm con nuôi thì Ủy ban nhân dân cấp xã có văn bản kèm theo hồ sơ trẻ em gửi Sở Tư pháp để tìm người nhận trẻ em làm con nuôi."
+    }
+  },
+  "retrieval_tests": []
+}

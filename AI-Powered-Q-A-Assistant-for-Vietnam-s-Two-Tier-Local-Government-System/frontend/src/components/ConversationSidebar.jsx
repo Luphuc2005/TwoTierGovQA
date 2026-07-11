@@ -164,7 +164,7 @@ export default function ConversationSidebar({
 
             {/* ── User Footer ─────────────────────────────── */}
             <div className="border-t border-bdr p-3">
-                <div className="flex items-center justify-between rounded-xl px-3 py-2.5 hover:bg-sidebar-hover transition-smooth">
+                <div className="flex items-center justify-between rounded-xl px-3 py-2.5">
                     <div className="flex items-center gap-3 min-w-0">
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center flex-shrink-0 shadow-sm">
                             <span className="text-sm font-bold text-white">
@@ -180,19 +180,27 @@ export default function ConversationSidebar({
                             </p>
                         </div>
                     </div>
-                    <button
-                        onClick={logout}
-                        id="btn-logout"
-                        className="text-txt-muted hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-smooth flex-shrink-0"
-                        title="Đăng xuất"
-                        aria-label="Đăng xuất"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4.5 h-4.5">
-                            <path fillRule="evenodd" d="M3 4.25A2.25 2.25 0 0 1 5.25 2h5.5A2.25 2.25 0 0 1 13 4.25v2a.75.75 0 0 1-1.5 0v-2a.75.75 0 0 0-.75-.75h-5.5a.75.75 0 0 0-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 0 0 .75-.75v-2a.75.75 0 0 1 1.5 0v2A2.25 2.25 0 0 1 10.75 18h-5.5A2.25 2.25 0 0 1 3 15.75V4.25Z" clipRule="evenodd" />
-                            <path fillRule="evenodd" d="M19 10a.75.75 0 0 0-.75-.75H8.704l1.048-.943a.75.75 0 1 0-1.004-1.114l-2.5 2.25a.75.75 0 0 0 0 1.114l2.5 2.25a.75.75 0 1 0 1.004-1.114l-1.048-.943h9.546A.75.75 0 0 0 19 10Z" clipRule="evenodd" />
-                        </svg>
-                    </button>
                 </div>
+
+                {/* Logout button — full width, clearly visible */}
+                <button
+                    onClick={logout}
+                    id="btn-logout"
+                    className="w-full mt-2 flex items-center justify-center gap-2 rounded-xl
+                     px-3 py-2.5 text-[13px] font-medium text-red-600
+                     bg-red-50 border border-red-200
+                     hover:bg-red-100 hover:text-red-700 hover:border-red-300
+                     transition-smooth
+                     focus:outline-none focus:ring-2 focus:ring-red-400/30"
+                    title="Đăng xuất"
+                    aria-label="Đăng xuất"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                        <path fillRule="evenodd" d="M3 4.25A2.25 2.25 0 0 1 5.25 2h5.5A2.25 2.25 0 0 1 13 4.25v2a.75.75 0 0 1-1.5 0v-2a.75.75 0 0 0-.75-.75h-5.5a.75.75 0 0 0-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 0 0 .75-.75v-2a.75.75 0 0 1 1.5 0v2A2.25 2.25 0 0 1 10.75 18h-5.5A2.25 2.25 0 0 1 3 15.75V4.25Z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M19 10a.75.75 0 0 0-.75-.75H8.704l1.048-.943a.75.75 0 1 0-1.004-1.114l-2.5 2.25a.75.75 0 0 0 0 1.114l2.5 2.25a.75.75 0 1 0 1.004-1.114l-1.048-.943h9.546A.75.75 0 0 0 19 10Z" clipRule="evenodd" />
+                    </svg>
+                    Đăng xuất
+                </button>
             </div>
         </aside>
     );

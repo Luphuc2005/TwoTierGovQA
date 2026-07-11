@@ -7,6 +7,7 @@ import ChatWindow from "../components/ChatWindow";
 import ChatInput from "../components/ChatInput";
 import UploadModal from "../components/UploadModal";
 import ProcessingModal from "../components/ProcessingModal";
+import RetrievalPanel from "../components/RetrievalPanel";
 import { conversationAPI, chatAPI, uploadAPI } from "../api/client";
 
 export default function ChatPage() {
@@ -20,6 +21,10 @@ export default function ChatPage() {
     const [processingFile, setProcessingFile] = useState(null);
     const [processingDocId, setProcessingDocId] = useState(null);
     const [uploadError, setUploadError] = useState("");
+
+    // Retrieval panel state
+    const [isRetrievalPanelOpen, setIsRetrievalPanelOpen] = useState(false);
+    const [retrievalData, setRetrievalData] = useState(null);
 
     // Ref to skip loadMessages when auto-creating a conversation during send
     const skipLoadRef = useRef(false);
@@ -124,7 +129,7 @@ export default function ChatPage() {
 
             try {
                 const res = await chatAPI.sendMessage(convId, text);
-                const { user_message, assistant_message } = res.data;
+                const { user_message, assistant_message, retrieval_context, timing_ms, tier } = res.data;
 
                 // Replace optimistic user message with real one, and add assistant message
                 setMessages((prev) => [
@@ -132,6 +137,17 @@ export default function ChatPage() {
                     user_message,
                     assistant_message,
                 ]);
+
+                // Store retrieval data for the panel
+                if (retrieval_context && retrieval_context.length > 0) {
+                    setRetrievalData({
+                        chunks: retrieval_context,
+                        timing: timing_ms,
+                        tier: tier,
+                    });
+                } else {
+                    setRetrievalData(null);
+                }
 
                 // Refresh conversation list to get updated titles
                 loadConversations();
@@ -236,7 +252,7 @@ export default function ChatPage() {
                         {/* Header icon */}
                         <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                                className="w-4.5 h-4.5 text-primary-600">
+                                className="w-4 h-4 text-primary-600">
                                 <path d="M11.584 2.376a.75.75 0 0 1 .832 0l9 6a.75.75 0 1 1-.832 1.248L12 3.901 3.416 9.624a.75.75 0 0 1-.832-1.248l9-6Z" />
                                 <path fillRule="evenodd" d="M20.25 10.332v9.918H21a.75.75 0 0 1 0 1.5H3a.75.75 0 0 1 0-1.5h.75v-9.918a.75.75 0 0 1 .634-.74A49.109 49.109 0 0 1 12 9c2.59 0 5.134.202 7.616.592a.75.75 0 0 1 .634.74Zm-7.5 2.418a.75.75 0 0 0-1.5 0v6.75a.75.75 0 0 0 1.5 0v-6.75Zm3-.75a.75.75 0 0 1 .75.75v6.75a.75.75 0 0 1-1.5 0v-6.75a.75.75 0 0 1 .75-.75ZM9 12.75a.75.75 0 0 0-1.5 0v6.75a.75.75 0 0 0 1.5 0v-6.75Z" clipRule="evenodd" />
                             </svg>
@@ -252,8 +268,34 @@ export default function ChatPage() {
                         </div>
                     </div>
 
-                    {/* Status badge */}
+                    {/* Right: Retrieval button + Status badge */}
                     <div className="flex items-center gap-2">
+                        {/* Retrieval Panel Toggle */}
+                        <button
+                            onClick={() => setIsRetrievalPanelOpen(true)}
+                            id="btn-retrieval-panel"
+                            className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-semibold
+                                transition-smooth border
+                                ${retrievalData
+                                    ? 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100 hover:border-violet-300'
+                                    : 'bg-gray-50 text-txt-muted border-bdr hover:bg-gray-100 cursor-default'
+                                }`}
+                            disabled={!retrievalData}
+                            title="Xem kết quả Retrieval"
+                            aria-label="Xem kết quả Retrieval"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                                <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
+                            </svg>
+                            Retrieval
+                            {retrievalData && (
+                                <span className="bg-violet-200 text-violet-800 px-1.5 py-0.5 rounded-full text-[10px] font-bold">
+                                    {retrievalData.chunks?.length || 0}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* Status badge */}
                         <div className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-semibold
                             ${isLoading
                                 ? 'bg-amber-50 text-amber-700 border border-amber-200'
@@ -295,6 +337,15 @@ export default function ChatPage() {
                 }}
                 file={processingFile}
                 docId={processingDocId}
+            />
+
+            {/* Retrieval Panel */}
+            <RetrievalPanel
+                isOpen={isRetrievalPanelOpen}
+                onClose={() => setIsRetrievalPanelOpen(false)}
+                chunks={retrievalData?.chunks || []}
+                timing={retrievalData?.timing}
+                tier={retrievalData?.tier}
             />
         </div>
     );

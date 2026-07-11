@@ -316,14 +316,21 @@ class IngestPipeline:
             try:
                 with open(METADATA_PATH, "r", encoding="utf-8") as f:
                     metadata_list = json.load(f)
-                    for item in metadata_list:
-                        item_meta = item.get("metadata", {})
-                        if item_meta.get("file_sha256") == self.file_sha256:
-                            if self.dry_run:
-                                self.warnings.append(f"Document with SHA-256 {self.file_sha256} already exists in production metadata. Continuing dry-run.")
-                            else:
-                                self.errors.append(f"Duplicate document error: File with SHA-256 {self.file_sha256} already exists in production metadata.")
-                                return False
+                    duplicate_count = sum(
+                        1
+                        for item in metadata_list
+                        if item.get("metadata", {}).get("file_sha256") == self.file_sha256
+                    )
+                    if duplicate_count:
+                        duplicate_msg = (
+                            f"Document with SHA-256 {self.file_sha256} already exists "
+                            f"in production metadata ({duplicate_count} chunks)."
+                        )
+                        if self.dry_run:
+                            self.warnings.append(f"{duplicate_msg} Continuing dry-run.")
+                        else:
+                            self.errors.append(f"Duplicate document error: {duplicate_msg}")
+                            return False
             except Exception as e:
                 self.warnings.append(f"Error checking duplicate SHA-256: {e}")
         else:

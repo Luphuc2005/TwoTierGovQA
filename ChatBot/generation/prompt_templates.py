@@ -76,6 +76,11 @@ Thay vào đó, trả về JSON với định dạng:
 Nếu câu hỏi quá chung chung, không rõ ý (ví dụ: "Luật quy định gì?", "Cho tôi biết về luật"):
 → Trả về JSON: {"answer": null, "citations": [], "abstain": true, "reason": "Câu hỏi chưa đủ cụ thể. Vui lòng cho biết bạn muốn hỏi về vấn đề pháp lý nào, ví dụ: thẩm quyền, thủ tục, mức phạt, hay quy định cụ thể nào?"}
 
+Riêng với câu hỏi thực tế về việc trước đây phải lên cấp huyện làm thủ tục, nay phải đến đâu:
+- Nếu CONTEXT có quy định chuyển thẩm quyền/hồ sơ từ cấp huyện sang cấp xã hoặc cấp tỉnh, KHÔNG abstain chỉ vì người dùng chưa nêu tên thủ tục.
+- Trả lời theo điều kiện trong CONTEXT: thủ tục có thể thuộc cấp xã hoặc cấp tỉnh tùy lĩnh vực; nếu CONTEXT nói hồ sơ đang giải quyết được bàn giao/tiếp tục giải quyết thì nêu rõ cơ quan tiếp tục xử lý.
+- Cuối câu trả lời có thể hỏi thêm tên thủ tục cụ thể để xác định chính xác nơi đến.
+
 ## LUẬT BẮT BUỘC KHI TRẢ LỜI:
 1. **CHỈ dùng thông tin trong CONTEXT** — TUYỆT ĐỐI KHÔNG suy diễn, bịa đặt, hoặc dùng kiến thức bên ngoài.
 2. **PHẢI CÓ CẤU TRÚC RÕ RÀNG** — Sử dụng các tiêu đề (Heading) và danh sách (Bullet points) để tách biệt các ý. Gợi ý cấu trúc:
@@ -246,6 +251,8 @@ PHẠM VI: CHỈ trả lời câu hỏi pháp luật. Nếu câu hỏi KHÔNG li
 
 Nếu câu hỏi mơ hồ → {"answer": null, "citations": [], "abstain": true, "reason": "Câu hỏi chưa rõ. Vui lòng hỏi cụ thể hơn về vấn đề pháp lý nào?"}
 
+Ngoại lệ: với câu hỏi kiểu "trước đây lên huyện làm thủ tục, bây giờ đến đâu", nếu context có quy định chuyển thẩm quyền/hồ sơ từ cấp huyện sang cấp xã hoặc cấp tỉnh thì KHÔNG abstain. Hãy trả lời có điều kiện theo context và hỏi thêm tên thủ tục cụ thể nếu cần.
+
 QUY TẮC: Trả lời CHỈ dựa trên context. PHẢI có cấu trúc rõ ràng (Heading: Nguyên tắc, Chủ thể, Mục tiêu). Trả lời TRÚNG trọng tâm, cực kỳ súc tích, KHÔNG lặp từ/ý.
 MỖI CÂU PHẢI bắt đầu bằng trích dẫn chi tiết: "Theo Điều X, Khoản Y của [Văn bản]...". 
 Nếu context không đủ căn cứ → abstain=true.
@@ -272,7 +279,8 @@ Nếu context không liên quan: {"answer": null, "citations": [], "abstain": tr
 ## YÊU CẦU:
 - Trả lời dựa TRÊN VÀ CHỈ DỰA TRÊN context ở trên
 - Trích dẫn cụ thể Điều/Khoản/Điểm
-- Nếu context không đủ thông tin → abstain=true"""
+- Nếu context không đủ thông tin → abstain=true
+- Nếu câu hỏi hỏi chung về việc thủ tục trước đây thuộc cấp huyện nay đến đâu, và context có quy định chuyển thẩm quyền/hồ sơ sang cấp xã hoặc cấp tỉnh, hãy trả lời theo điều kiện trong context thay vì abstain chỉ vì thiếu tên thủ tục cụ thể."""
         
         if additional_instructions:
             prompt += f"\n\n## CHỈ DẪN BỔ SUNG:\n{additional_instructions}"

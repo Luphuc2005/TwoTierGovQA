@@ -3,6 +3,7 @@ Pydantic schemas for request / response validation.
 """
 
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -71,6 +72,20 @@ class MessageListResponse(BaseModel):
     messages: list[MessageResponse]
 
 
+# ── Retrieval Context ─────────────────────────────────────────
+
+class RetrievalChunk(BaseModel):
+    rank: int
+    text: str
+    score_retrieval: float
+    score_rerank: float
+    van_ban: str = ""
+    dieu: Optional[str] = None
+    khoan: Optional[str] = None
+    diem: Optional[str] = None
+    chunk_id: int = -1
+
+
 # ── Chat ──────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
@@ -81,3 +96,6 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     user_message: MessageResponse
     assistant_message: MessageResponse
+    retrieval_context: list[RetrievalChunk] = []
+    timing_ms: Optional[float] = None
+    tier: Optional[str] = None

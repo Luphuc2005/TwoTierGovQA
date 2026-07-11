@@ -65,7 +65,11 @@ def chat(
 
     # 4. Call RAG Pipeline
     try:
-        ai_content = generate_response(req.message)
+        rag_result = generate_response(req.message, conversation_history=history)
+        ai_content = rag_result["answer"]
+        retrieval_context = rag_result.get("retrieval_context", [])
+        timing_ms = rag_result.get("timing_ms")
+        tier = rag_result.get("tier")
     except Exception as e:
         logger.error(f"RAG pipeline call failed: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
@@ -82,6 +86,9 @@ def chat(
     return ChatResponse(
         user_message=MessageResponse.model_validate(user_msg),
         assistant_message=MessageResponse.model_validate(assistant_msg),
+        retrieval_context=retrieval_context,
+        timing_ms=timing_ms,
+        tier=tier,
     )
 
 

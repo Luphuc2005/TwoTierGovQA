@@ -60,6 +60,11 @@ _OUT_OF_SCOPE_MARKERS = {
     "ăn gì", "uống gì", "thời tiết", "bóng đá",
 }
 
+_FOLLOW_UP_MARKERS = {
+    "thế còn", "vậy còn", "còn", "thủ tục đó", "việc đó", "trường hợp đó",
+    "cái đó", "nó", "đó", "như vậy", "mất bao lâu", "cần giấy tờ gì",
+}
+
 
 def _get_float_env(name: str, default: float) -> float:
     try:
@@ -84,6 +89,53 @@ def _is_obvious_out_of_scope(query: str) -> bool:
     if any(keyword in q for keyword in _LEGAL_SCOPE_KEYWORDS):
         return False
     return any(marker in q for marker in _OUT_OF_SCOPE_MARKERS)
+
+
+def _message_role(message) -> str:
+    if isinstance(message, dict):
+        return str(message.get("role") or "")
+    return str(getattr(message, "role", "") or "")
+
+
+def _message_content(message) -> str:
+    if isinstance(message, dict):
+        return str(message.get("content") or "")
+    return str(getattr(message, "content", "") or "")
+
+
+def _rewrite_follow_up_query(query: str, conversation_history=None) -> str:
+    """
+    Lightweight query rewrite for short context-dependent follow-ups.
+    It keeps full standalone questions unchanged and only prepends the previous
+    user question when the current query depends on "đó/còn/thế còn" context.
+    """
+    if not conversation_history:
+        return query
+
+    normalized = _normalize_for_scope(query)
+    if not normalized:
+        return query
+
+    looks_contextual = any(marker in normalized for marker in _FOLLOW_UP_MARKERS)
+    if not looks_contextual:
+        return query
+
+    previous_user_messages = []
+    for message in conversation_history:
+        if _message_role(message) != "user":
+            continue
+        content = _message_content(message).strip()
+        if content and _normalize_for_scope(content) != normalized:
+            previous_user_messages.append(content)
+
+    if not previous_user_messages:
+        return query
+
+    previous_question = previous_user_messages[-1]
+    return (
+        f"Câu hỏi trước: {previous_question}\n"
+        f"Câu hỏi tiếp nối cần trả lời đầy đủ: {query}"
+    )
 
 
 def init_rag_pipeline(
@@ -123,7 +175,7 @@ def init_rag_pipeline(
     # Check GPU VRAM to avoid slow paging bottlenecks.
     # Default is 3.5GB because 4GB laptop GPUs are often reported as slightly
     # below 4.0GiB by CUDA.
-    retriever_device_override = os.environ.get("RAG_RETRIEVER_DEVICE", "auto").strip().lower()
+    retriever_device_override = os.environ.get("RAG_RETRIEVER_DEVICE", os.environ.get("RAG_DEVICE", "auto")).strip().lower()
     min_retriever_vram_gb = _get_float_env("RAG_RETRIEVER_MIN_VRAM_GB", 3.5)
     device = "cpu"
     total_vram = 0.0
@@ -257,20 +309,37 @@ def init_rag_pipeline(
     logger.info(f"   Backend: {backend} | Model: {model_name} | Fallback: {'local Qwen3 (GPU)' if fallback_client else 'none'}")
 
 
-def generate_response(user_message: str, conversation_history=None) -> str:
+def generate_response(user_message: str, conversation_history=None) -> dict:
     """
-    Xử lý câu hỏi qua RAG pipeline, trả về answer text.
+    Xử lý câu hỏi qua RAG pipeline, trả về answer text + retrieval context.
 
     Luồng:
       1. GenerationPipeline.generate(query) -> Retrieval (FAISS + BM25) + Rerank + Gating + LLM
-      2. Format answer + citations → return string
+      2. Format answer + citations → return dict
 
     Args:
         user_message: câu hỏi từ user
-        conversation_history: (unused — RAG pipeline stateless per query)
+        conversation_history: lịch sử DB messages, dùng để rewrite câu hỏi tiếp nối ngắn
 
     Returns:
-        str: câu trả lời có kèm trích dẫn
+        dict: {
+            "answer": str,
+            "retrieval_context": [
+                {
+                    "rank": int,
+                    "text": str,
+                    "score_retrieval": float,
+                    "score_rerank": float,
+                    "van_ban": str,
+                    "dieu": str | None,
+                    "khoan": str | None,
+                    "diem": str | None,
+                    "chunk_id": int,
+                }
+            ],
+            "timing_ms": float,
+            "tier": str,
+        }
     """
     global _pipeline, _initialized
 
@@ -279,15 +348,28 @@ def generate_response(user_message: str, conversation_history=None) -> str:
 
     t_start = time.time()
 
+    effective_query = _rewrite_follow_up_query(user_message, conversation_history)
+    if effective_query != user_message:
+        logger.info(
+            "Rewrote follow-up query for retrieval: {!r} -> {!r}",
+            user_message[:80],
+            effective_query[:160],
+        )
+
     if _is_obvious_out_of_scope(user_message):
         elapsed_ms = (time.time() - t_start) * 1000
         logger.info(f"⚡ Fast out-of-scope response in {elapsed_ms:.0f}ms: {user_message[:80]}...")
-        return f"{_OUT_OF_SCOPE_REPLY}\n\n_⏱ {elapsed_ms:.0f}ms | Tier: NONE_"
+        return {
+            "answer": f"{_OUT_OF_SCOPE_REPLY}\n\n_⏱ {elapsed_ms:.0f}ms | Tier: NONE_",
+            "retrieval_context": [],
+            "timing_ms": elapsed_ms,
+            "tier": "NONE",
+        }
 
     # ── Step 1: Retrieval + Rerank + Gating + LLM Generation ──
-    logger.info(f"🔍 Processing query with Hybrid RAG: {user_message[:80]}...")
+    logger.info(f"🔍 Processing query with Hybrid RAG: {effective_query[:80]}...")
     output, metadata = _pipeline.generate(
-        query=user_message,
+        query=effective_query,
         verbose=False,
     )
 
@@ -319,4 +401,26 @@ def generate_response(user_message: str, conversation_history=None) -> str:
 
     logger.info(f"✅ Response generated in {elapsed_ms:.0f}ms (Tier: {tier})")
 
-    return answer_text
+    # ── Step 3: Build retrieval context for frontend ──
+    retrieval_context = []
+    top_chunks = metadata.get("retrieved_chunks", [])
+
+    for rank, chunk in enumerate(top_chunks, 1):
+        retrieval_context.append({
+            "rank": rank,
+            "text": getattr(chunk, "text", "")[:500],
+            "score_retrieval": round(float(getattr(chunk, "score_retrieval", 0.0)), 4),
+            "score_rerank": round(float(getattr(chunk, "score_rerank", 0.0)), 4),
+            "van_ban": getattr(chunk, "van_ban", "") or "",
+            "dieu": str(chunk.dieu) if getattr(chunk, "dieu", None) else None,
+            "khoan": str(chunk.khoan) if getattr(chunk, "khoan", None) else None,
+            "diem": str(chunk.diem) if getattr(chunk, "diem", None) else None,
+            "chunk_id": getattr(chunk, "chunk_id", -1),
+        })
+
+    return {
+        "answer": answer_text,
+        "retrieval_context": retrieval_context,
+        "timing_ms": round(elapsed_ms, 1),
+        "tier": tier,
+    }

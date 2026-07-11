@@ -1,0 +1,682 @@
+NHUNG VIEC DA LAM TREN DU AN CHATBOT
+Ngay tong hop: 2026-06-26
+Thu muc du an: D:\GitHub\Folder cha - Copy
+
+============================================================
+1. TONG QUAN NHUNG GI DA KIEM TRA
+============================================================
+
+Da thuc hien mot vong audit lon cho du an chatbot hoi dap phap luat va hanh chinh cong tieng Viet, huong den mo hinh chinh quyen dia phuong hai cap.
+
+Da doc va kiem tra cac phan chinh:
+
+- README.md o root.
+- .env.example o root.
+- Backend FastAPI trong:
+  AI-Powered-Q-A-Assistant-for-Vietnam-s-Two-Tier-Local-Government-System/backend
+- Frontend React/Vite trong:
+  AI-Powered-Q-A-Assistant-for-Vietnam-s-Two-Tier-Local-Government-System/frontend
+- Pipeline RAG/generation trong:
+  ChatBot/generation
+- Pipeline OCR/parser/chunk trong:
+  ChatBot/xldl
+- Script ingestion trong:
+  scripts/ingest_new_pdf.py
+- Vector store production trong:
+  vector_data/production
+- Du lieu staging trong:
+  vector_data/staging
+- Model bi-encoder va cross-encoder trong:
+  ChatBot/cross-encoder/outputs/models
+
+Ket luan kien truc thuc te:
+
+PDF
+-> scripts/ingest_new_pdf.py
+-> OCR hoac digital text extraction
+-> legal_parser.py va chunks.py
+-> embedding bang bi_bge_m3_ft
+-> vector_data/production/index.faiss
+-> vector_data/production/metadata.json
+-> vector_data/production/bm25.pkl
+-> backend FastAPI app.rag_service
+-> ChatBot/generation/run_generation.py
+-> Hybrid retrieval BM25 + FAISS
+-> RRF merge
+-> CrossEncoder rerank
+-> LLM generation
+-> React frontend hien thi cau tra loi va retrieval context
+
+
+============================================================
+2. DA TAO BAO CAO AUDIT CHI TIET
+============================================================
+
+Da tao bao cao Markdown day du tai:
+
+artifacts/audit/senior_ai_backend_audit_report.md
+
+Bao cao nay gom cac phan:
+
+A. Tom tat du an da hieu
+B. Cau truc thu muc quan trong
+C. Luong hoat dong thuc te
+D. Cong viec da thuc hien
+E. Danh sach file da thay doi
+F. Cac cau lenh da chay
+G. Ket qua kiem thu
+H. Loi con ton tai
+I. Thanh phan con thieu
+J. De xuat buoc tiep theo
+K. Goi thong tin gui cho ChatGPT kiem tra
+
+Bao cao nay dung de gui cho nguoi khac hoac AI khac tiep tuc review du an.
+
+
+============================================================
+3. DA TAO SCRIPT AUDIT RAG TU DONG
+============================================================
+
+Da them file:
+
+scripts/audit_rag_system.py
+
+Muc dich:
+
+- Audit vector store ma khong ghi vao production.
+- Doc FAISS index.
+- Doc metadata.json.
+- Doc bm25.pkl.
+- Kiem tra FAISS, metadata va BM25 co dong bo so luong khong.
+- Kiem tra chunk rong.
+- Kiem tra chunk qua ngan.
+- Kiem tra chunk qua dai.
+- Kiem tra chunk trung lap.
+- Kiem tra cac truong metadata bi thieu.
+- Chay bo 10 cau hoi retrieval test.
+- Xuat ket qua ra JSON va Markdown trong artifacts/audit.
+
+Cac lenh da chay:
+
+C:\Users\ADMIN\anaconda3\envs\ChatBot\python.exe scripts\audit_rag_system.py --skip-retrieval
+
+C:\Users\ADMIN\anaconda3\envs\ChatBot\python.exe scripts\audit_rag_system.py --top-k 5
+
+Ket qua duoc tao:
+
+artifacts/audit/rag_audit_20260626_000148.json
+artifacts/audit/rag_audit_20260626_000148.md
+artifacts/audit/rag_audit_20260626_000227.json
+artifacts/audit/rag_audit_20260626_000227.md
+
+
+============================================================
+4. KET QUA KIEM TRA VECTOR STORE
+============================================================
+
+Da kiem tra vector store production:
+
+Thu muc:
+
+vector_data/production
+
+Cac file:
+
+- index.faiss
+- metadata.json
+- bm25.pkl
+
+Ket qua:
+
+- FAISS vectors: 2061
+- Metadata chunks: 2061
+- BM25 corpus: 2061
+- Embedding dimension: 1024
+- Trang thai dong bo so luong: True
+
+Nghia la:
+
+- Khong co lech so luong giua vector index va metadata.
+- Khong co lech so luong giua BM25 corpus va metadata.
+- Production vector store dang doc duoc.
+
+Nhung van phat hien loi chat luong metadata:
+
+- 1826/2061 chunk thieu doc_id.
+- 1826/2061 chunk thieu file_sha256.
+- 1826/2061 chunk thieu file_name.
+- 1826/2061 chunk thieu source_pdf.
+- 2061/2061 chunk thieu page_start.
+- 2061/2061 chunk thieu page_end.
+- Co 86 cap chunk co dau hieu trung lap theo 500 ky tu dau.
+- Mot so ten van ban bi nhieu OCR/noise, vi du co chuoi ngay thang sai dang nhu 13.16.2025.
+
+Nhan xet:
+
+Vector store co the chay retrieval, nhung citation/source tracing chua that tot vi metadata page/source cua du lieu cu con thieu.
+
+
+============================================================
+5. DA CHAY 10 NHOM RETRIEVAL TEST
+============================================================
+
+Da chay 10 cau test bat buoc, gom:
+
+1. Cau hoi co dap an truc tiep.
+2. Cau hoi dung tu doi thuong khac voi van ban luat.
+3. Cau hoi yeu cau tim dung Dieu hoac Khoan.
+4. Cau hoi khong co thong tin trong du lieu.
+5. Cau hoi mo ho.
+6. Cau hoi tiep noi dua tren lich su hoi thoai.
+7. Cau hoi chuyen sang chu de moi.
+8. Cau hoi co loi chinh ta tieng Viet.
+9. Cau hoi khong dau.
+10. Cau hoi co y dinh yeu cau chatbot tra loi ngoai tai lieu.
+
+Ket qua tom tat:
+
+- Cau hoi truc tiep ve chinh quyen dia phuong hai cap retrieve ra top-1 chua dung ky vong.
+- Cau hoi "O dia phuong bay gio con cap huyen khong?" retrieve chua tot.
+- Cau hoi "Dieu 5 quy dinh..." retrieve ra Dieu 2, chua dung Dieu.
+- Cau hoi ngoai du lieu ve mu bao hiem co rerank score rat thap, nen abstain.
+- Cau hoi mo ho "Thu tuc do can giay to gi?" can history de hieu "do" la gi.
+- Cau hoi tiep noi "The con cap xa thi sao?" can rewrite theo cau hoi truoc.
+- Cau hoi ve Bo Y te retrieve tuong doi hop ly.
+- Cau hoi khong dau/sai chinh ta retrieve kem.
+- Cau hoi prompt injection can de prompt va guard LLM tu choi tra loi ngoai tai lieu.
+
+Ket luan:
+
+- Retrieval dang chay duoc.
+- CrossEncoder rerank chay duoc.
+- Nhung chat luong retrieval voi cau khong dau/sai chinh ta va cau hoi Dieu/Khoan chua dat.
+- Can cai thien query normalization va bo test citation.
+
+
+============================================================
+6. DA SUA HOI THOAI NHIEU LUOT
+============================================================
+
+Van de ban dau:
+
+Backend co lay lich su hoi thoai tu database nhung khong truyen vao RAG.
+
+File lien quan:
+
+AI-Powered-Q-A-Assistant-for-Vietnam-s-Two-Tier-Local-Government-System/backend/app/routers/chat.py
+
+Truoc do:
+
+generate_response(req.message)
+
+Da sua thanh:
+
+generate_response(req.message, conversation_history=history)
+
+Y nghia:
+
+- RAG service co the nhan lich su hoi thoai.
+- Tao tien de cho viec xu ly cau hoi tiep noi nhu "the con cap xa thi sao?".
+
+
+============================================================
+7. DA THEM REWRITE CAU HOI TIEP NOI
+============================================================
+
+File da sua:
+
+AI-Powered-Q-A-Assistant-for-Vietnam-s-Two-Tier-Local-Government-System/backend/app/rag_service.py
+
+Da them logic:
+
+- Nhan biet cau hoi ngan hoac phu thuoc ngu canh.
+- Cac marker nhu:
+  the con
+  vay con
+  con
+  thu tuc do
+  viec do
+  truong hop do
+  cai do
+  no
+  do
+  nhu vay
+  mat bao lau
+  can giay to gi
+
+Neu cau hoi co ve la follow-up, service se ghep voi cau hoi user gan nhat truoc do.
+
+Vi du:
+
+Cau hoi truoc:
+Chinh quyen dia phuong hai cap hoat dong nhu the nao?
+
+Cau hoi moi:
+The con cap xa thi sao?
+
+Duoc rewrite thanh:
+
+Cau hoi truoc: Chinh quyen dia phuong hai cap hoat dong nhu the nao?
+Cau hoi tiep noi can tra loi day du: The con cap xa thi sao?
+
+Da chay smoke test cho ham rewrite:
+
+- Cau "The con cap xa thi sao?" duoc rewrite dung.
+- Cau hoi day du "Tham quyen cua Bo Y te duoc phan cap ra sao?" khong bi rewrite.
+
+
+============================================================
+8. DA SUA FILE BACKEND .ENV.EXAMPLE
+============================================================
+
+File da sua:
+
+AI-Powered-Q-A-Assistant-for-Vietnam-s-Two-Tier-Local-Government-System/backend/.env.example
+
+Van de ban dau:
+
+File nay con thien ve cau hinh OpenAI cu, trong khi code hien tai doc cac bien RAG/Gemini/ingestion.
+Ngoai ra REDIS_URL bi khai bao trung voi 2 port khac nhau.
+
+Da bo sung:
+
+- RAG_BACKEND=gemini
+- RAG_MODEL=gemini-2.5-flash
+- RAG_MAX_TOKENS=2048
+- RAG_TEMPERATURE=0.1
+- GEMINI_API_KEY
+- OPENAI_API_KEY
+- OPENROUTER_API_KEY
+- INGEST_PYTHON_EXE
+- POPPLER_PATH
+
+Da don:
+
+- Bo REDIS_URL bi trung.
+- Giu REDIS_URL=redis://localhost:6380/0 theo config hien tai.
+
+Y nghia:
+
+Nguoi chay backend copy .env.example sang .env se it bi thieu bien hon.
+
+
+============================================================
+9. DA SUA WARNING DUPLICATE TRONG INGESTION
+============================================================
+
+File da sua:
+
+scripts/ingest_new_pdf.py
+
+Van de ban dau:
+
+Khi dry-run mot PDF da ton tai trong production metadata, script lap warning duplicate theo tung chunk.
+
+Vi du file 130-ndcp.signed_thongke.pdf co 18 chunk, nen truoc do warning bi lap 18 lan.
+
+Da sua:
+
+- Dem so chunk trung SHA.
+- Chi ghi 1 warning duy nhat.
+- Warning co kem so chunk trung.
+
+Ket qua sau khi sua:
+
+Truoc:
+
+Warnings: 18
+
+Sau:
+
+Warnings: 1
+Errors: 0
+
+
+============================================================
+10. DA CHAY INGESTION DRY-RUN
+============================================================
+
+Lenh da chay:
+
+C:\Users\ADMIN\anaconda3\envs\ChatBot\python.exe scripts\ingest_new_pdf.py --pdf Data\DataPhuc\130-ndcp.signed_thongke.pdf --dry-run
+
+File PDF test:
+
+Data\DataPhuc\130-ndcp.signed_thongke.pdf
+
+Ket qua:
+
+- Status: success
+- Mode: dry-run
+- Document ID: doc_db7d4963de2bb467
+- File SHA-256: db7d4963de2bb46707460d841e65c6c6b06650cc28952321c0c85d1b9281e3c2
+- Text length: 6173 chars
+- Total chunks: 18
+- Embedding dim: 1024
+- FAISS current total: 2061
+- Metadata current count: 2061
+- BM25 current count: 2061
+- Warnings: 1
+- Errors: 0
+
+Quan trong:
+
+Day la dry-run nen khong ghi them vao production FAISS index.
+
+
+============================================================
+11. DA CHAY BACKEND SMOKE TEST
+============================================================
+
+Da chay backend FastAPI bang uvicorn:
+
+C:\Users\ADMIN\anaconda3\envs\ChatBot\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8080
+
+Sau do goi:
+
+Invoke-WebRequest -UseBasicParsing http://localhost:8080/api/health
+
+Ket qua:
+
+HTTP 200 OK
+{"status":"healthy","service":"legal-chatbot-api"}
+
+Goi tiep:
+
+Invoke-WebRequest -UseBasicParsing http://localhost:8080/api/rag-status
+
+Ket qua:
+
+_initialized=true
+_pipeline_is_none=false
+_reranker_is_none=true
+
+Nhan xet:
+
+- Backend khoi dong duoc.
+- RAG pipeline init duoc.
+- Health endpoint hoat dong.
+
+
+============================================================
+12. DA CHAY FRONTEND BUILD
+============================================================
+
+Lenh da chay trong thu muc frontend:
+
+npm.cmd run build
+
+Ket qua:
+
+Vite build thanh cong.
+
+Output chinh:
+
+- dist/index.html
+- dist/assets/index-*.css
+- dist/assets/index-*.js
+
+Nhan xet:
+
+Frontend build khong bi loi sau cac thay doi.
+
+
+============================================================
+13. DA KIEM TRA MOI TRUONG VA THU VIEN
+============================================================
+
+Ket qua moi truong:
+
+- Windows: Microsoft Windows NT 10.0.26200.0
+- Python he thong: 3.13.3
+- Python ChatBot env: 3.10.19
+- Node: v22.20.0
+- npm: 10.9.3
+
+Python he thong bi thieu:
+
+- faiss
+- sentence_transformers
+
+Moi truong dung de chay RAG:
+
+C:\Users\ADMIN\anaconda3\envs\ChatBot\python.exe
+
+Thu vien quan trong:
+
+- faiss: 1.8.0
+- torch: 2.5.1+cu121
+- CUDA available: True
+- transformers: 5.4.0
+- fastapi: 0.111.0
+- sqlalchemy: 2.0.29
+
+
+============================================================
+14. CAC ENDPOINT BACKEND THUC TE DA XAC DINH
+============================================================
+
+Backend co cac endpoint:
+
+- POST /api/auth/register
+- POST /api/auth/login
+- GET /api/auth/me
+- GET /api/conversations
+- POST /api/conversations
+- GET /api/conversations/{conversation_id}
+- DELETE /api/conversations/{conversation_id}
+- GET /api/messages/{conversation_id}
+- POST /api/chat
+- POST /api/upload-document
+- GET /api/upload-document/{doc_id}/stream
+- GET /api/health
+- GET /api/rag-status
+
+
+============================================================
+15. CAC FILE QUAN TRONG DA TAO HOAC SUA
+============================================================
+
+File moi:
+
+- scripts/audit_rag_system.py
+- artifacts/audit/rag_audit_20260626_000148.json
+- artifacts/audit/rag_audit_20260626_000148.md
+- artifacts/audit/rag_audit_20260626_000227.json
+- artifacts/audit/rag_audit_20260626_000227.md
+- artifacts/audit/senior_ai_backend_audit_report.md
+- artifacts/audit/nhung_viec_da_lam_tren_du_an_chatbot.txt
+
+File da sua trong dot audit:
+
+- AI-Powered-Q-A-Assistant-for-Vietnam-s-Two-Tier-Local-Government-System/backend/.env.example
+- AI-Powered-Q-A-Assistant-for-Vietnam-s-Two-Tier-Local-Government-System/backend/app/rag_service.py
+- AI-Powered-Q-A-Assistant-for-Vietnam-s-Two-Tier-Local-Government-System/backend/app/routers/chat.py
+- scripts/ingest_new_pdf.py
+
+File co thay doi san tu truoc hoac khong phai trong dot sua chinh nay:
+
+- backend/app/schemas.py
+- frontend/src/components/ChatInput.jsx
+- frontend/src/components/ConversationSidebar.jsx
+- frontend/src/index.css
+- frontend/src/pages/ChatPage.jsx
+- frontend/src/components/RetrievalPanel.jsx
+- ChatBot/generation/run_generation.py
+
+Luu y:
+
+Khong revert cac thay doi san co trong repo.
+
+
+============================================================
+16. CAC LOI/DIEM YEU CON TON TAI
+============================================================
+
+1. Metadata production cu thieu lineage
+
+Muc do: nghiem trong
+
+Chi tiet:
+
+- Nhieu chunk thieu doc_id.
+- Nhieu chunk thieu file_sha256.
+- Nhieu chunk thieu file_name.
+- Nhieu chunk thieu source_pdf.
+- Tat ca chunk dang thieu page_start/page_end.
+
+Anh huong:
+
+- Kho truy vet nguon chinh xac.
+- Citation theo trang PDF chua tot.
+- Kho xoa/update tai lieu cu theo doc_id.
+
+
+2. Retrieval voi cau khong dau va sai chinh ta kem
+
+Muc do: nghiem trong/trung binh
+
+Vi du:
+
+uy ban nhan dan cap xa co tham quyen gi trong linh vuc ho tich?
+
+va:
+
+chinh quyen dia phuong hai cap la gi
+
+Bi retrieve sai nguon va score rerank rat thap.
+
+Huong xu ly:
+
+- Them bo normalize khong dau.
+- Query expansion tieng Viet.
+- Bo sung training/eval data cho cau hoi khong dau/sai chinh ta.
+
+
+3. CrossEncoder rerank cham khi chay CPU
+
+Muc do: trung binh
+
+Ket qua test:
+
+Moi cau retrieval/rerank mat khoang 8.7 den 29.5 giay.
+
+Huong xu ly:
+
+- Dam bao reranker chay CUDA neu co GPU.
+- Giam so candidates truoc CE.
+- Cache ket qua retrieval.
+- Dung rerank skip khi first-stage rat chac.
+
+
+4. Ten van ban con OCR noise
+
+Muc do: trung binh
+
+Vi du:
+
+- Co cac chuoi nhu Gờ. ĐẾN
+- Ngay thang sai dang 13.16.2025
+
+Anh huong:
+
+- Citation hien thi xau.
+- Ten van ban trong retrieval panel khong sach.
+
+Huong xu ly:
+
+- Clean title extraction.
+- Dung metadata lay tu PDF/file name/regex so hieu.
+- Backfill lai metadata production.
+
+
+5. Chua test generation bang LLM key that
+
+Muc do: trung binh
+
+Ly do:
+
+Audit offline khong goi API key that de tranh dung/lo secret.
+
+Can lam tiep:
+
+- Chay test /api/chat end-to-end voi GEMINI_API_KEY hoac OPENAI_API_KEY that.
+- Kiem tra answer co faithful voi context khong.
+- Kiem tra citation co dung Dieu/Khoan/Diem khong.
+
+
+============================================================
+17. LENH CO THE CHAY LAI
+============================================================
+
+Chay audit vector store:
+
+C:\Users\ADMIN\anaconda3\envs\ChatBot\python.exe scripts\audit_rag_system.py --skip-retrieval
+
+Chay audit retrieval 10 cau:
+
+C:\Users\ADMIN\anaconda3\envs\ChatBot\python.exe scripts\audit_rag_system.py --top-k 5
+
+Chay backend:
+
+cd AI-Powered-Q-A-Assistant-for-Vietnam-s-Two-Tier-Local-Government-System\backend
+C:\Users\ADMIN\anaconda3\envs\ChatBot\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8080
+
+Test backend health:
+
+Invoke-WebRequest -UseBasicParsing http://localhost:8080/api/health
+
+Test RAG status:
+
+Invoke-WebRequest -UseBasicParsing http://localhost:8080/api/rag-status
+
+Chay frontend build:
+
+cd AI-Powered-Q-A-Assistant-for-Vietnam-s-Two-Tier-Local-Government-System\frontend
+npm.cmd run build
+
+Chay frontend dev:
+
+cd AI-Powered-Q-A-Assistant-for-Vietnam-s-Two-Tier-Local-Government-System\frontend
+npm.cmd run dev
+
+Chay ingestion dry-run:
+
+C:\Users\ADMIN\anaconda3\envs\ChatBot\python.exe scripts\ingest_new_pdf.py --pdf Data\DataPhuc\130-ndcp.signed_thongke.pdf --dry-run
+
+
+============================================================
+18. DE XUAT BUOC TIEP THEO
+============================================================
+
+Uu tien 1:
+
+- Backfill va chuan hoa metadata production cu.
+- Them doc_id, file_sha256, file_name, source_pdf, page_start, page_end.
+- Test lai citation/source sau khi backfill.
+
+Uu tien 2:
+
+- Cai thien retrieval cho cau khong dau va sai chinh ta.
+- Them normalize khong dau truoc BM25.
+- Can nhac query rewrite/query expansion.
+
+Uu tien 2:
+
+- Chay test generation that voi API key.
+- Tao bo gold QA co expected citations.
+- Cham answer faithfulness va citation correctness.
+
+Uu tien 3:
+
+- Toi uu toc do CrossEncoder reranker.
+- Bat CUDA on reranker neu kha dung.
+- Giam candidates truoc rerank.
+- Them cache.
+
+
+============================================================
+19. TOM TAT MOT CAU
+============================================================
+
+Da audit toan bo du an chatbot, xac dinh duoc pipeline RAG thuc te, tao script audit, chay vector/retrieval/backend/frontend/ingestion tests, sua multi-turn history rewrite, sua env mau, sua warning duplicate ingestion, va ghi lai bao cao day du trong artifacts/audit.

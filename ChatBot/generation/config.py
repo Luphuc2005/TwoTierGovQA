@@ -6,6 +6,8 @@ Chỉ cần sửa file này, rồi chạy:  python run_pipeline.py
 Mọi tham số pipeline đều nằm ở đây.
 """
 
+import os
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. CHẾ ĐỘ CHẠY
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -35,7 +37,7 @@ MODEL = "gemini-2.5-flash"
 #   qwen    → OPENROUTER_API_KEY
 #   gemini  → GEMINI_API_KEY
 #   openai  → OPENAI_API_KEY
-API_KEY = "AIzaSyAA4yR_IMN7Srf4iC0i3M9hmnoXKFTMmF4"
+API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
